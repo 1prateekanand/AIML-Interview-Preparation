@@ -1,0 +1,128 @@
+
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #0C120F;
+    --bg-surface: #19251D;
+    --bg-surface-elevated: #223328;
+    --bg-sidebar: #131E17;
+    --border-subtle: #26382C;
+    --border-accent: rgba(163, 230, 53, 0.35);
+    --accent: #A3E635;
+    --accent-secondary: #D9F99D;
+    --accent-glow: rgba(163, 230, 53, 0.22);
+    --accent-hover: #b4ee4d;
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+    --active-nav-bg: rgba(163, 230, 53, 0.12);
+    --active-nav-border: rgba(163, 230, 53, 0.35);
+  }
+
+  * {
+    border-color: var(--border-subtle);
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    transition: background-color 0.25s ease, color 0.25s ease;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+}
+
+/* Custom delicate dark scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.35);
+}
+
+/* =========================================
+   Category Hero Banner
+   ========================================= */
+
+.category-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: #070b14;
+}
+
+/* Full-size category image */
+.category-hero__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center right;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Dark gradient: strong on the left, transparent on the right */
+.category-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(5, 12, 25, 0.96) 0%,
+      rgba(5, 12, 25, 0.88) 30%,
+      rgba(5, 12, 25, 0.60) 52%,
+      rgba(5, 12, 25, 0.12) 100%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(5, 12, 25, 0.42) 0%,
+      transparent 45%
+    );
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Keep category hero content above background layers */
+.category-hero > *:not(.category-hero__image) {
+  position: relative;
+}
+
+/* Responsive image positioning */
+@media (max-width: 768px) {
+  .category-hero__image {
+    object-position: 65% center;
+  }
+
+  .category-hero::after {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(5, 12, 25, 0.94) 0%,
+        rgba(5, 12, 25, 0.80) 58%,
+        rgba(5, 12, 25, 0.45) 100%
+      ),
+      linear-gradient(
+        0deg,
+        rgba(5, 12, 25, 0.55) 0%,
+        transparent 65%
+      );
+  }
+}

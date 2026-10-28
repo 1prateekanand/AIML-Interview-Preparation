@@ -1,0 +1,8 @@
+{
+  "name": "CodeNexus - AI/ML Interview Preparation",
+  "description": "CodeNexus AI/ML interview prep platform featuring interactive problem sets across 11 AI/ML domains, personalized study lists, advanced insights analytics, and dynamic theme switching.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
