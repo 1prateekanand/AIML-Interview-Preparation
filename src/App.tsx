@@ -24,7 +24,6 @@ import {
   fetchSubmissionById,
 } from './services/submissionService';
 import { fetchQuestions } from './services/questionService';
-import { setRuntimePublishableKey } from './lib/supabase';
 
 const VALID_PAGES: PageId[] = [
   'dashboard',
@@ -141,35 +140,22 @@ function AppContent() {
   });
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoadingQuestions, setIsLoadingQuestions] = useState<boolean>(false);
-  const [fetchProgress, setFetchProgress] = useState<{ loaded: number; total: number } | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [isDatabaseBacked, setIsDatabaseBacked] = useState<boolean>(false);
 
   const loadQuestionsFromSupabase = useCallback(async () => {
     setIsLoadingQuestions(true);
-    setFetchError(null);
     try {
-      const result = await fetchQuestions((loaded, total) => {
-        setFetchProgress({ loaded, total });
-      });
-      setProblems(result.problems);
-      setIsDatabaseBacked(result.isDatabaseBacked);
-      if (result.error) {
-        setFetchError(result.error);
+      const result = await fetchQuestions();
+      if (result.problems && result.problems.length > 0) {
+        setProblems(result.problems);
       }
     } catch (err: any) {
-      setFetchError(err?.message || 'Failed to fetch questions from Supabase');
+      console.error('Failed to fetch questions from Supabase:', err);
     } finally {
       setIsLoadingQuestions(false);
     }
   }, []);
 
   useEffect(() => {
-    loadQuestionsFromSupabase();
-  }, [loadQuestionsFromSupabase]);
-
-  const handleSavePublishableKey = useCallback((key: string) => {
-    setRuntimePublishableKey(key);
     loadQuestionsFromSupabase();
   }, [loadQuestionsFromSupabase]);
 
@@ -380,11 +366,6 @@ function AppContent() {
               onOpenProblem={(p) => setSelectedProblem(p)}
               onToggleStatus={handleToggleStatus}
               isLoading={isLoadingQuestions}
-              fetchProgress={fetchProgress}
-              fetchError={fetchError}
-              isDatabaseBacked={isDatabaseBacked}
-              onRefresh={loadQuestionsFromSupabase}
-              onSavePublishableKey={handleSavePublishableKey}
             />
           )}
 

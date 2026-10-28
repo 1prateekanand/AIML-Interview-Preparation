@@ -14,11 +14,6 @@ import {
   ArrowDown,
   Search,
   Eye,
-  Database,
-  RefreshCw,
-  Key,
-  AlertTriangle,
-  X as CloseIcon,
 } from 'lucide-react';
 import { TARGET_COMPANIES } from '../data/mockData';
 import { Problem, Difficulty, ProblemStatus } from '../types';
@@ -33,11 +28,6 @@ interface ProblemsProps {
   onOpenProblem: (problem: Problem) => void;
   onToggleStatus: (problemId: number) => void;
   isLoading?: boolean;
-  fetchProgress?: { loaded: number; total: number } | null;
-  fetchError?: string | null;
-  isDatabaseBacked?: boolean;
-  onRefresh?: () => void;
-  onSavePublishableKey?: (key: string) => void;
 }
 
 type SortField = 'number' | 'title' | 'difficulty' | 'successRate';
@@ -51,11 +41,6 @@ export const Problems: React.FC<ProblemsProps> = ({
   onOpenProblem,
   onToggleStatus,
   isLoading = false,
-  fetchProgress,
-  fetchError,
-  isDatabaseBacked = false,
-  onRefresh,
-  onSavePublishableKey,
 }) => {
   const [localSearchQuery, setLocalSearchQuery] = useState<string>('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
@@ -63,9 +48,6 @@ export const Problems: React.FC<ProblemsProps> = ({
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
-  const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
-  const [customKey, setCustomKey] = useState<string>('');
-  const [keySaveMessage, setKeySaveMessage] = useState<string | null>(null);
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('number');
@@ -210,72 +192,6 @@ export const Problems: React.FC<ProblemsProps> = ({
         accuracy={categoryStats.accuracy}
         onResetCategory={() => onSelectCategory(null)}
       />
-
-      {/* Supabase Database Connection Banner */}
-      <div className={`p-4 rounded-xl border flex flex-wrap items-center justify-between gap-3 text-xs transition-colors shadow-sm ${
-        isDatabaseBacked
-          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-          : fetchError
-          ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-          : 'bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-secondary)]'
-      }`}>
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
-            isDatabaseBacked
-              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-              : 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-          }`}>
-            <Database className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="font-bold flex items-center gap-2 text-sm text-[var(--text-primary)]">
-              <span>{isDatabaseBacked ? 'Supabase Live Connection' : 'Supabase Client Initialized'}</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--bg-main)] border border-[var(--border-subtle)] text-[var(--text-muted)]">
-                public.questions
-              </span>
-            </div>
-            <p className="text-xs opacity-85 mt-0.5">
-              {isLoading && fetchProgress
-                ? `Syncing database: ${fetchProgress.loaded.toLocaleString()} / ${fetchProgress.total.toLocaleString()} records...`
-                : isDatabaseBacked
-                ? `Successfully synced ${problems.length.toLocaleString()} questions directly from your remote Supabase database.`
-                : fetchError
-                ? `${fetchError} (Serving ${problems.length} offline cached questions)`
-                : `Connected to Supabase endpoint. Loaded ${problems.length} questions.`}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {onRefresh && (
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-surface-elevated)] hover:bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-medium transition-colors cursor-pointer disabled:opacity-50"
-              title="Refresh questions from Supabase"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[var(--accent)]' : ''}`} />
-              <span>{isLoading ? 'Syncing...' : 'Sync Database'}</span>
-            </button>
-          )}
-
-          {onSavePublishableKey && (
-            <button
-              type="button"
-              onClick={() => {
-                setKeySaveMessage(null);
-                setShowConfigModal(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg-main)] font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
-              title="Configure Supabase Publishable Key"
-            >
-              <Key className="w-3.5 h-3.5" />
-              <span>{isDatabaseBacked ? 'Database Key' : 'Connect Key'}</span>
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* 2. Controls & Filter Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -434,13 +350,8 @@ export const Problems: React.FC<ProblemsProps> = ({
                     <div className="flex flex-col items-center justify-center gap-3">
                       <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
                       <p className="text-sm font-semibold text-[var(--text-primary)]">
-                        Connecting to Supabase Database...
+                        Loading problems...
                       </p>
-                      {fetchProgress && (
-                        <p className="text-xs text-[var(--text-muted)] font-mono">
-                          Fetched {fetchProgress.loaded.toLocaleString()} / {fetchProgress.total.toLocaleString()} records
-                        </p>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -692,94 +603,6 @@ export const Problems: React.FC<ProblemsProps> = ({
           })}
         </div>
       </div>
-
-      {/* Supabase Key Configuration Modal */}
-      {showConfigModal && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[var(--accent)]/15 border border-[var(--border-accent)] flex items-center justify-center text-[var(--accent)]">
-                  <Database className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">Supabase Configuration</h3>
-                  <p className="text-[11px] text-[var(--text-muted)]">Connect to public.questions table</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowConfigModal(false)}
-                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-lg hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
-              >
-                <CloseIcon className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="text-[var(--text-muted)] block mb-1 font-medium">Project URL</label>
-                <input
-                  type="text"
-                  readOnly
-                  value="https://ntmxnvoomvuvdrszydot.supabase.co"
-                  className="w-full bg-[var(--bg-main)] text-[var(--text-secondary)] font-mono text-xs rounded-lg px-3 py-2 border border-[var(--border-subtle)] select-all"
-                />
-              </div>
-
-              <div>
-                <label className="text-[var(--text-primary)] block mb-1 font-semibold">
-                  Publishable / Anon Key (VITE_SUPABASE_PUBLISHABLE_KEY)
-                </label>
-                <input
-                  type="password"
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  value={customKey}
-                  onChange={(e) => setCustomKey(e.target.value)}
-                  className="w-full bg-[var(--bg-main)] text-[var(--text-primary)] font-mono text-xs rounded-lg px-3 py-2 border border-[var(--border-subtle)] focus:outline-none focus:border-[var(--accent)]"
-                />
-                <p className="text-[11px] text-[var(--text-muted)] mt-1">
-                  You can configure this in your <code className="text-[var(--accent)]">.env</code> file or paste here for immediate session activation.
-                </p>
-              </div>
-
-              {keySaveMessage && (
-                <div className="p-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs">
-                  {keySaveMessage}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[var(--border-subtle)]">
-              <button
-                type="button"
-                onClick={() => setShowConfigModal(false)}
-                className="px-3.5 py-1.5 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-secondary)] cursor-pointer"
-              >
-                Close
-              </button>
-              {onSavePublishableKey && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (customKey.trim()) {
-                      onSavePublishableKey(customKey.trim());
-                      setKeySaveMessage('Publishable key saved! Re-syncing database...');
-                      setTimeout(() => {
-                        setShowConfigModal(false);
-                      }, 1200);
-                    }
-                  }}
-                  disabled={!customKey.trim()}
-                  className="px-4 py-1.5 rounded-lg bg-[var(--accent)] text-[var(--bg-main)] text-xs font-bold hover:opacity-90 disabled:opacity-50 cursor-pointer shadow-sm"
-                >
-                  Save & Connect
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
