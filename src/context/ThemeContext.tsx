@@ -3,276 +3,219 @@ import { ColorTheme } from '../types';
 
 export const THEMES: ColorTheme[] = [
   {
+    id: 'black-gold',
+    name: 'Black + Gold',
+    swatches: {
+      background: '#0B0B0C',
+      surface: '#161618',
+      accent: '#E5A93C',
+      secondaryAccent: '#F5D77F',
+    },
+    tokens: {
+      bgMain: '#0B0B0C',
+      bgSurface: '#161618',
+      bgSurfaceElevated: '#202024',
+      bgSidebar: '#101012',
+      borderSubtle: '#26262A',
+      borderAccent: 'rgba(229, 169, 60, 0.42)',
+      accent: '#E5A93C',
+      accentSecondary: '#F5D77F',
+      accentGlow: 'rgba(229, 169, 60, 0.28)',
+      accentHover: '#f5ba42',
+      textPrimary: '#F5F5F7',
+      textSecondary: '#A1A1AA',
+      textMuted: '#71717A',
+      activeNavBg: 'rgba(229, 169, 60, 0.15)',
+      activeNavBorder: 'rgba(229, 169, 60, 0.42)',
+    },
+  },
+  {
     id: 'forest-lime',
     name: 'Forest + Lime',
     swatches: {
-      background: '#0C120F',
-      surface: '#19251D',
-      accent: '#A3E635',
+      background: '#0A120D',
+      surface: '#132218',
+      accent: '#84CC16',
       secondaryAccent: '#D9F99D',
     },
     tokens: {
-      bgMain: '#0C120F',
-      bgSurface: '#19251D',
-      bgSurfaceElevated: '#223328',
-      bgSidebar: '#131E17',
-      borderSubtle: '#26382C',
-      borderAccent: 'rgba(163, 230, 53, 0.35)',
-      accent: '#A3E635',
+      bgMain: '#0A120D',
+      bgSurface: '#132218',
+      bgSurfaceElevated: '#1C3022',
+      bgSidebar: '#0E1A12',
+      borderSubtle: '#1E3526',
+      borderAccent: 'rgba(132, 204, 22, 0.4)',
+      accent: '#84CC16',
       accentSecondary: '#D9F99D',
-      accentGlow: 'rgba(163, 230, 53, 0.22)',
-      accentHover: '#b4ee4d',
-      textPrimary: '#F1F5F9',
+      accentGlow: 'rgba(132, 204, 22, 0.24)',
+      accentHover: '#9ae624',
+      textPrimary: '#F2F7F4',
       textSecondary: '#94A3B8',
       textMuted: '#64748B',
-      activeNavBg: 'rgba(163, 230, 53, 0.12)',
-      activeNavBorder: 'rgba(163, 230, 53, 0.35)',
+      activeNavBg: 'rgba(132, 204, 22, 0.14)',
+      activeNavBorder: 'rgba(132, 204, 22, 0.38)',
     },
   },
   {
     id: 'midnight-purple',
     name: 'Midnight + Purple',
     swatches: {
-      background: '#0B1020',
-      surface: '#151C32',
-      accent: '#8B5CF6',
+      background: '#0B0A16',
+      surface: '#15132A',
+      accent: '#A855F7',
       secondaryAccent: '#C4B5FD',
     },
     tokens: {
-      bgMain: '#0B1020',
-      bgSurface: '#151C32',
-      bgSurfaceElevated: '#1D2744',
-      bgSidebar: '#0E1428',
-      borderSubtle: '#253052',
-      borderAccent: 'rgba(139, 92, 246, 0.35)',
-      accent: '#8B5CF6',
+      bgMain: '#0B0A16',
+      bgSurface: '#15132A',
+      bgSurfaceElevated: '#1F1C3D',
+      bgSidebar: '#0F0E20',
+      borderSubtle: '#262247',
+      borderAccent: 'rgba(168, 85, 247, 0.4)',
+      accent: '#A855F7',
       accentSecondary: '#C4B5FD',
-      accentGlow: 'rgba(139, 92, 246, 0.22)',
-      accentHover: '#9d74f8',
-      textPrimary: '#F1F5F9',
-      textSecondary: '#94A3B8',
-      textMuted: '#64748B',
-      activeNavBg: 'rgba(139, 92, 246, 0.14)',
-      activeNavBorder: 'rgba(139, 92, 246, 0.35)',
+      accentGlow: 'rgba(168, 85, 247, 0.25)',
+      accentHover: '#b86ff9',
+      textPrimary: '#F5F3FF',
+      textSecondary: '#A5A0C0',
+      textMuted: '#756F90',
+      activeNavBg: 'rgba(168, 85, 247, 0.15)',
+      activeNavBorder: 'rgba(168, 85, 247, 0.4)',
     },
   },
   {
     id: 'navy-royal-blue',
     name: 'Navy + Royal Blue',
     swatches: {
-      background: '#111827',
-      surface: '#1F2937',
+      background: '#080E1C',
+      surface: '#101B33',
       accent: '#3B82F6',
       secondaryAccent: '#93C5FD',
     },
     tokens: {
-      bgMain: '#111827',
-      bgSurface: '#1F2937',
-      bgSurfaceElevated: '#283548',
-      bgSidebar: '#162033',
-      borderSubtle: '#374151',
-      borderAccent: 'rgba(59, 130, 246, 0.35)',
+      bgMain: '#080E1C',
+      bgSurface: '#101B33',
+      bgSurfaceElevated: '#182747',
+      bgSidebar: '#0B1327',
+      borderSubtle: '#1E2F54',
+      borderAccent: 'rgba(59, 130, 246, 0.4)',
       accent: '#3B82F6',
       accentSecondary: '#93C5FD',
-      accentGlow: 'rgba(59, 130, 246, 0.22)',
+      accentGlow: 'rgba(59, 130, 246, 0.25)',
       accentHover: '#60a5fa',
-      textPrimary: '#F1F5F9',
+      textPrimary: '#F0F6FF',
       textSecondary: '#94A3B8',
       textMuted: '#64748B',
-      activeNavBg: 'rgba(59, 130, 246, 0.14)',
-      activeNavBorder: 'rgba(59, 130, 246, 0.35)',
+      activeNavBg: 'rgba(59, 130, 246, 0.15)',
+      activeNavBorder: 'rgba(59, 130, 246, 0.4)',
     },
   },
   {
     id: 'navy-teal',
     name: 'Navy + Teal',
     swatches: {
-      background: '#0B1320',
-      surface: '#162535',
+      background: '#081216',
+      surface: '#0F2026',
       accent: '#14B8A6',
       secondaryAccent: '#99F6E4',
     },
     tokens: {
-      bgMain: '#0B1320',
-      bgSurface: '#162535',
-      bgSurfaceElevated: '#1D3146',
-      bgSidebar: '#0F1C2C',
-      borderSubtle: '#263A4F',
-      borderAccent: 'rgba(20, 184, 166, 0.35)',
+      bgMain: '#081216',
+      bgSurface: '#0F2026',
+      bgSurfaceElevated: '#162E37',
+      bgSidebar: '#0A181D',
+      borderSubtle: '#1A3742',
+      borderAccent: 'rgba(20, 184, 166, 0.4)',
       accent: '#14B8A6',
       accentSecondary: '#99F6E4',
-      accentGlow: 'rgba(20, 184, 166, 0.22)',
+      accentGlow: 'rgba(20, 184, 166, 0.25)',
       accentHover: '#2dd4bf',
-      textPrimary: '#F1F5F9',
-      textSecondary: '#94A3B8',
-      textMuted: '#64748B',
-      activeNavBg: 'rgba(20, 184, 166, 0.14)',
-      activeNavBorder: 'rgba(20, 184, 166, 0.35)',
+      textPrimary: '#F0FDFA',
+      textSecondary: '#8EA7A3',
+      textMuted: '#607B77',
+      activeNavBg: 'rgba(20, 184, 166, 0.15)',
+      activeNavBorder: 'rgba(20, 184, 166, 0.4)',
     },
   },
   {
     id: 'charcoal-cyan',
     name: 'Charcoal + Cyan',
     swatches: {
-      background: '#101418',
-      surface: '#202830',
+      background: '#0D1117',
+      surface: '#161D26',
       accent: '#06B6D4',
       secondaryAccent: '#A5F3FC',
     },
     tokens: {
-      bgMain: '#101418',
-      bgSurface: '#202830',
-      bgSurfaceElevated: '#2A3440',
-      bgSidebar: '#161C22',
-      borderSubtle: '#2E3A45',
-      borderAccent: 'rgba(6, 182, 212, 0.35)',
+      bgMain: '#0D1117',
+      bgSurface: '#161D26',
+      bgSurfaceElevated: '#202A36',
+      bgSidebar: '#10151E',
+      borderSubtle: '#24303F',
+      borderAccent: 'rgba(6, 182, 212, 0.4)',
       accent: '#06B6D4',
       accentSecondary: '#A5F3FC',
-      accentGlow: 'rgba(6, 182, 212, 0.22)',
+      accentGlow: 'rgba(6, 182, 212, 0.25)',
       accentHover: '#22d3ee',
       textPrimary: '#F1F5F9',
       textSecondary: '#94A3B8',
       textMuted: '#64748B',
-      activeNavBg: 'rgba(6, 182, 212, 0.14)',
-      activeNavBorder: 'rgba(6, 182, 212, 0.35)',
+      activeNavBg: 'rgba(6, 182, 212, 0.15)',
+      activeNavBorder: 'rgba(6, 182, 212, 0.4)',
     },
   },
   {
     id: 'graphite-magenta',
     name: 'Graphite + Magenta',
     swatches: {
-      background: '#09090B',
-      surface: '#24212B',
-      accent: '#E879F9',
+      background: '#100C14',
+      surface: '#1B1522',
+      accent: '#D946EF',
       secondaryAccent: '#F5D0FE',
     },
     tokens: {
-      bgMain: '#09090B',
-      bgSurface: '#24212B',
-      bgSurfaceElevated: '#302C39',
-      bgSidebar: '#17151D',
-      borderSubtle: '#3C3547',
-      borderAccent: 'rgba(232, 121, 249, 0.35)',
-      accent: '#E879F9',
+      bgMain: '#100C14',
+      bgSurface: '#1B1522',
+      bgSurfaceElevated: '#271F32',
+      bgSidebar: '#140F19',
+      borderSubtle: '#2F243B',
+      borderAccent: 'rgba(217, 70, 239, 0.4)',
+      accent: '#D946EF',
       accentSecondary: '#F5D0FE',
-      accentGlow: 'rgba(232, 121, 249, 0.22)',
-      accentHover: '#f0abfc',
-      textPrimary: '#F1F5F9',
-      textSecondary: '#94A3B8',
-      textMuted: '#64748B',
-      activeNavBg: 'rgba(232, 121, 249, 0.14)',
-      activeNavBorder: 'rgba(232, 121, 249, 0.35)',
+      accentGlow: 'rgba(217, 70, 239, 0.25)',
+      accentHover: '#e879f9',
+      textPrimary: '#FAF5FF',
+      textSecondary: '#A79BB0',
+      textMuted: '#7A6E83',
+      activeNavBg: 'rgba(217, 70, 239, 0.15)',
+      activeNavBorder: 'rgba(217, 70, 239, 0.4)',
     },
   },
   {
-    id: 'black-gold',
-    name: 'Black + Gold',
+    id: 'ivory-amber',
+    name: 'Ivory + Amber',
     swatches: {
-      background: '#0A0A0A',
-      surface: '#1A1A1A',
-      accent: '#EAB308',
+      background: '#FBF7F0',
+      surface: '#FFFFFF',
+      accent: '#D97706',
       secondaryAccent: '#FDE68A',
     },
     tokens: {
-      bgMain: '#0A0A0A',
-      bgSurface: '#1A1A1A',
-      bgSurfaceElevated: '#262626',
-      bgSidebar: '#121212',
-      borderSubtle: '#333333',
-      borderAccent: 'rgba(234, 179, 8, 0.35)',
-      accent: '#EAB308',
+      bgMain: '#FBF7F0',
+      bgSurface: '#FFFFFF',
+      bgSurfaceElevated: '#F4EFE6',
+      bgSidebar: '#F5EFE4',
+      borderSubtle: '#E5DCD0',
+      borderAccent: 'rgba(217, 119, 6, 0.4)',
+      accent: '#D97706',
       accentSecondary: '#FDE68A',
-      accentGlow: 'rgba(234, 179, 8, 0.22)',
-      accentHover: '#facc15',
-      textPrimary: '#F1F5F9',
-      textSecondary: '#94A3B8',
-      textMuted: '#64748B',
-      activeNavBg: 'rgba(234, 179, 8, 0.14)',
-      activeNavBorder: 'rgba(234, 179, 8, 0.35)',
-    },
-  },
-  {
-    id: 'blue-violet',
-    name: 'Blue + Violet',
-    swatches: {
-      background: '#172554',
-      surface: '#1D4ED8', // Supplied palette reference
-      accent: '#8B5CF6',
-      secondaryAccent: '#DDD6FE',
-    },
-    // Note: User prompt instruction: "The Blue + Violet theme must retain a readable dark dashboard.
-    // Do not use #1D4ED8 as the background of every card. Keep the supplied colours as the palette reference,
-    // but use darker derived surface shades where necessary to maintain hierarchy and text contrast."
-    tokens: {
-      bgMain: '#101738', // Dark deep navy
-      bgSurface: '#18244E', // Readable derived dark surface
-      bgSurfaceElevated: '#202F64',
-      bgSidebar: '#131B40',
-      borderSubtle: '#2E3F78',
-      borderAccent: 'rgba(139, 92, 246, 0.4)',
-      accent: '#8B5CF6',
-      accentSecondary: '#DDD6FE',
-      accentGlow: 'rgba(139, 92, 246, 0.25)',
-      accentHover: '#a78bfa',
-      textPrimary: '#F1F5F9',
-      textSecondary: '#94A3B8',
-      textMuted: '#64748B',
-      activeNavBg: 'rgba(139, 92, 246, 0.16)',
-      activeNavBorder: 'rgba(139, 92, 246, 0.4)',
-    },
-  },
-  {
-    id: 'espresso-copper',
-    name: 'Espresso + Copper',
-    swatches: {
-      background: '#211713',
-      surface: '#43291F',
-      accent: '#C87941',
-      secondaryAccent: '#F0C9A5',
-    },
-    tokens: {
-      bgMain: '#211713',
-      bgSurface: '#34211A', // Balanced dark espresso
-      bgSurfaceElevated: '#452B22',
-      bgSidebar: '#271B16',
-      borderSubtle: '#54362A',
-      borderAccent: 'rgba(200, 121, 65, 0.35)',
-      accent: '#C87941',
-      accentSecondary: '#F0C9A5',
-      accentGlow: 'rgba(200, 121, 65, 0.22)',
-      accentHover: '#d98b53',
-      textPrimary: '#F1F5F9',
-      textSecondary: '#94A3B8',
-      textMuted: '#64748B',
-      activeNavBg: 'rgba(200, 121, 65, 0.15)',
-      activeNavBorder: 'rgba(200, 121, 65, 0.35)',
-    },
-  },
-  {
-    id: 'charcoal-crimson',
-    name: 'Charcoal + Crimson',
-    swatches: {
-      background: '#111111',
-      surface: '#222222',
-      accent: '#EF4444',
-      secondaryAccent: '#FCA5A5',
-    },
-    tokens: {
-      bgMain: '#111111',
-      bgSurface: '#202020',
-      bgSurfaceElevated: '#2A2A2A',
-      bgSidebar: '#171717',
-      borderSubtle: '#333333',
-      borderAccent: 'rgba(239, 68, 68, 0.35)',
-      accent: '#EF4444',
-      accentSecondary: '#FCA5A5',
-      accentGlow: 'rgba(239, 68, 68, 0.22)',
-      accentHover: '#f87171',
-      textPrimary: '#F1F5F9',
-      textSecondary: '#94A3B8',
-      textMuted: '#64748B',
-      activeNavBg: 'rgba(239, 68, 68, 0.14)',
-      activeNavBorder: 'rgba(239, 68, 68, 0.35)',
+      accentGlow: 'rgba(217, 119, 6, 0.2)',
+      accentHover: '#b45309',
+      textPrimary: '#1C1917',
+      textSecondary: '#57534E',
+      textMuted: '#78716C',
+      activeNavBg: 'rgba(217, 119, 6, 0.12)',
+      activeNavBorder: 'rgba(217, 119, 6, 0.4)',
     },
   },
 ];
@@ -285,19 +228,20 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'codenexus-theme';
+const PRIMARY_STORAGE_KEY = 'sabevia-theme';
+const LEGACY_STORAGE_KEY = 'codenexus-theme';
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeId, setThemeId] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(PRIMARY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
       if (saved && THEMES.some((t) => t.id === saved)) {
         return saved;
       }
     } catch {
       // Fallback
     }
-    return 'forest-lime'; // Default as requested
+    return 'black-gold'; // Default as requested
   });
 
   const currentTheme = THEMES.find((t) => t.id === themeId) || THEMES[0];
@@ -306,6 +250,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const root = document.documentElement;
     const tokens = currentTheme.tokens;
 
+    // Core application tokens
     root.style.setProperty('--bg-main', tokens.bgMain);
     root.style.setProperty('--bg-surface', tokens.bgSurface);
     root.style.setProperty('--bg-surface-elevated', tokens.bgSurfaceElevated);
@@ -322,8 +267,30 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--active-nav-bg', tokens.activeNavBg);
     root.style.setProperty('--active-nav-border', tokens.activeNavBorder);
 
+    // Specification alias tokens
+    root.style.setProperty('--color-background', tokens.bgMain);
+    root.style.setProperty('--color-surface', tokens.bgSurface);
+    root.style.setProperty('--color-surface-elevated', tokens.bgSurfaceElevated);
+    root.style.setProperty('--color-primary', tokens.accent);
+    root.style.setProperty('--color-primary-hover', tokens.accentHover);
+    root.style.setProperty('--color-secondary', tokens.accentSecondary);
+    root.style.setProperty('--color-border', tokens.borderSubtle);
+    root.style.setProperty('--color-text', tokens.textPrimary);
+    root.style.setProperty('--color-text-muted', tokens.textMuted);
+    root.style.setProperty('--color-glow', tokens.accentGlow);
+
+    // Set data attribute for theme targeting
+    root.setAttribute('data-theme', currentTheme.id);
+    if (currentTheme.id === 'ivory-amber') {
+      root.classList.add('theme-light');
+      root.classList.remove('theme-dark');
+    } else {
+      root.classList.add('theme-dark');
+      root.classList.remove('theme-light');
+    }
+
     try {
-      localStorage.setItem(STORAGE_KEY, currentTheme.id);
+      localStorage.setItem(PRIMARY_STORAGE_KEY, currentTheme.id);
     } catch {
       // Storage unavailable
     }

@@ -6,6 +6,8 @@ import {
   BarChart3,
   ChevronDown,
   Layers,
+  Settings,
+  HelpCircle,
 } from 'lucide-react';
 import { PageId, Problem } from '../types';
 import { CATEGORIES_LIST } from '../data/categories';
@@ -25,7 +27,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectCategory,
   problems = [],
 }) => {
-  // Problems dropdown is expanded by default or when on problems page
   const [isProblemsExpanded, setIsProblemsExpanded] = useState<boolean>(true);
 
   // Auto-expand if navigating to problems or when a category is selected
@@ -53,33 +54,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className="w-64 bg-[var(--bg-sidebar)] border-r border-[var(--border-subtle)] flex flex-col shrink-0 h-screen sticky top-0 transition-colors duration-200 select-none z-20">
-      {/* Brand Header */}
-      <div className="p-4 md:p-5 border-b border-[var(--border-subtle)]/50 shrink-0">
+      {/* Brand Header: Sabevia - The path to knowledge. */}
+      <div className="p-4 md:p-5 border-b border-[var(--border-subtle)]/60 shrink-0">
         <div
           onClick={() => onSelectPage('dashboard')}
           className="flex items-center gap-3 cursor-pointer group"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') onSelectPage('dashboard');
+          }}
         >
-          <div className="w-9 h-9 rounded-xl bg-[var(--active-nav-bg)] border border-[var(--border-accent)] flex items-center justify-center text-[var(--accent)] font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
-            <span className="font-mono tracking-tighter">&lt;/&gt;</span>
+          {/* Sabevia Logo Emblem (Golden Mountain + Star + Winding Path) */}
+          <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 bg-[#0E0E12] border border-[var(--border-accent)] flex items-center justify-center p-1 shadow-sm group-hover:scale-105 transition-transform">
+            <img
+              src="/assets/aistudio/sabevia_logo.png"
+              alt="Sabevia Emblem"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                // Inline SVG fallback if image fails to load
+                e.currentTarget.style.display = 'none';
+              }}
+            />
           </div>
-          <div>
-            <span className="text-base font-bold tracking-tight text-[var(--text-primary)] block leading-none">
-              CodeNexus
+
+          <div className="min-w-0">
+            <span className="text-base font-extrabold tracking-tight text-[var(--text-primary)] block leading-tight">
+              Sabevia
             </span>
-            <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase font-medium">
-              AI / ML Interview Prep
+            <span className="text-[10px] text-[var(--text-muted)] tracking-wide font-medium block">
+              The path to knowledge.
             </span>
           </div>
         </div>
       </div>
 
       {/* Scrollable Navigation Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 space-y-1.5 focus:outline-none custom-scrollbar">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-1 focus:outline-none custom-scrollbar">
         {/* Dashboard */}
         <button
           type="button"
           onClick={() => onSelectPage('dashboard')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left ${
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left ${
             currentPage === 'dashboard'
               ? 'bg-[var(--active-nav-bg)] text-[var(--accent)] border border-[var(--active-nav-border)] shadow-xs font-semibold'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] border border-transparent'
@@ -94,9 +110,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
 
         {/* Problems Group */}
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <div
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
               currentPage === 'problems'
                 ? 'bg-[var(--active-nav-bg)] text-[var(--accent)] border border-[var(--active-nav-border)] shadow-xs font-semibold'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] border border-transparent'
@@ -136,9 +152,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={() => handleSelectSubCategory(null)}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer text-left relative ${
+                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer text-left relative ${
                   currentPage === 'problems' && !selectedCategory
-                    ? 'text-[var(--accent)] bg-[var(--active-nav-bg)] font-semibold border-l-2 border-[var(--accent)] shadow-2xs'
+                    ? 'text-[var(--accent)] bg-[var(--active-nav-bg)] font-semibold border-l-2 border-[var(--accent)]'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80'
                 }`}
               >
@@ -163,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
               </button>
 
-              {/* 11 Categories in Exact Requested Order */}
+              {/* 11 Categories */}
               {CATEGORIES_LIST.map((cat) => {
                 const isActive = currentPage === 'problems' && selectedCategory === cat.id;
                 const catCount = problems.filter((p) => p.categorySlug === cat.id).length;
@@ -174,9 +190,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     type="button"
                     onClick={() => handleSelectSubCategory(cat.id)}
                     title={cat.name}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer text-left relative ${
+                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer text-left relative ${
                       isActive
-                        ? 'text-[var(--accent)] bg-[var(--active-nav-bg)] font-semibold border-l-2 border-[var(--accent)] shadow-2xs'
+                        ? 'text-[var(--accent)] bg-[var(--active-nav-bg)] font-semibold border-l-2 border-[var(--accent)]'
                         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80'
                     }`}
                   >
@@ -210,7 +226,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => onSelectPage('favorites')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left ${
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left ${
             currentPage === 'favorites'
               ? 'bg-[var(--active-nav-bg)] text-[var(--accent)] border border-[var(--active-nav-border)] shadow-xs font-semibold'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] border border-transparent'
@@ -228,7 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => onSelectPage('insights')}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left ${
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left ${
             currentPage === 'insights'
               ? 'bg-[var(--active-nav-bg)] text-[var(--accent)] border border-[var(--active-nav-border)] shadow-xs font-semibold'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] border border-transparent'
@@ -243,15 +259,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* User / Pro Status Footer */}
-      <div className="p-3 border-t border-[var(--border-subtle)] shrink-0">
-        <div className="px-3 py-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[11px] font-medium text-[var(--text-secondary)]">Pro Active</span>
-          </div>
-          <span className="text-[10px] font-mono text-[var(--accent)]">v2.4</span>
-        </div>
+      {/* Bottom Navigation Links: Settings & Help & Support (as in reference concept) */}
+      <div className="p-3 border-t border-[var(--border-subtle)] shrink-0 space-y-1">
+        <button
+          type="button"
+          className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer text-left"
+          onClick={() => onSelectPage('dashboard')}
+        >
+          <Settings className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+          <span>Settings</span>
+        </button>
+
+        <button
+          type="button"
+          className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer text-left"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        >
+          <HelpCircle className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+          <span>Help & Support</span>
+        </button>
       </div>
     </aside>
   );

@@ -57,20 +57,31 @@ export const CategoryCards: React.FC<CategoryCardsProps> = ({
   return (
     <section className="space-y-4">
       {/* Section heading */}
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/20 text-emerald-400">
-          <Box className="h-4 w-4" />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-[var(--border-accent)] bg-[var(--active-nav-bg)] text-[var(--accent)]">
+            <Box className="h-4 w-4" />
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
+              Explore AI/ML Categories
+            </h2>
+            <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+              Choose a category to practice curated questions, track your progress, and build your interview skills.
+            </p>
+          </div>
         </div>
 
-        <div>
-          <h2 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
-            Explore AI/ML Categories
-          </h2>
-          <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-            Choose a topic, practise interview questions, and build your AI
-            engineering skills.
-          </p>
-        </div>
+        {/* View All link */}
+        <button
+          type="button"
+          onClick={() => onSelectCategory('')}
+          className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent)] hover:underline shrink-0 cursor-pointer"
+        >
+          <span>View All</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Three-column desktop layout */}

@@ -287,6 +287,10 @@ function AppContent() {
       setSelectedCategory(found ? found.id : categoryInput);
     }
     setCurrentPage('problems');
+    setIsEvaluationRoute(false);
+    setSelectedProblem(null);
+    setEvalQuestionId(null);
+    setEvalSubmissionId(null);
   };
 
   // Toggle problem status between Solved, Attempted, Todo
@@ -323,6 +327,10 @@ function AppContent() {
         currentPage={currentPage}
         onSelectPage={(page) => {
           setCurrentPage(page);
+          setIsEvaluationRoute(false);
+          setSelectedProblem(null);
+          setEvalQuestionId(null);
+          setEvalSubmissionId(null);
           if (page === 'insights' && currentPage === 'insights') {
             setInsightView(null);
           } else if (page !== 'insights') {
@@ -347,75 +355,78 @@ function AppContent() {
         />
 
         {/* Page Content Viewport */}
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto">
-          {currentPage === 'dashboard' && (
-            <Dashboard
-              onNavigate={setCurrentPage}
-              onOpenProblem={(p) => setSelectedProblem(p)}
-              onSelectCategory={handleSelectCategory}
-              problems={problems}
-            />
-          )}
-
-          {currentPage === 'problems' && (
-            <Problems
-              problems={problems}
-              searchQuery={searchQuery}
-              selectedCategory={selectedCategory}
-              onSelectCategory={handleSelectCategory}
-              onOpenProblem={(p) => setSelectedProblem(p)}
-              onToggleStatus={handleToggleStatus}
-              isLoading={isLoadingQuestions}
-            />
-          )}
-
-          {currentPage === 'favorites' && <Favorites />}
-
-          {currentPage === 'insights' && (
-            <Insights
-              activeView={insightView}
-              onViewChange={(view) => setInsightView(view)}
-              onNavigateToProblems={(tag) => {
-                handleSelectCategory(tag || null);
+        <main className="flex-1 p-3 sm:p-5 lg:p-7 max-w-[1560px] w-full mx-auto min-w-0">
+          {isEvaluationRoute ? (
+            <EvaluationModal
+              isPageMode={true}
+              problem={selectedProblem || (evalQuestionId ? problems.find((p) => p.id === evalQuestionId) : null)}
+              questionId={evalQuestionId}
+              submissionId={evalSubmissionId}
+              onClose={() => {
+                setIsEvaluationRoute(false);
+                setEvalQuestionId(null);
+                setEvalSubmissionId(null);
+                window.location.hash = selectedCategory
+                  ? `#/problems?category=${selectedCategory}`
+                  : '#/problems';
+              }}
+              onConfirmSolved={() => {
+                if (evalQuestionId) {
+                  handleStatusChange(evalQuestionId, 'Solved');
+                }
+                setIsEvaluationRoute(false);
+                setEvalQuestionId(null);
+                setEvalSubmissionId(null);
+                window.location.hash = selectedCategory
+                  ? `#/problems?category=${selectedCategory}`
+                  : '#/problems';
               }}
             />
+          ) : (
+            <>
+              {currentPage === 'dashboard' && (
+                <Dashboard
+                  onNavigate={setCurrentPage}
+                  onOpenProblem={(p) => setSelectedProblem(p)}
+                  onSelectCategory={handleSelectCategory}
+                  problems={problems}
+                />
+              )}
+
+              {currentPage === 'problems' && (
+                <Problems
+                  problems={problems}
+                  searchQuery={searchQuery}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={handleSelectCategory}
+                  onOpenProblem={(p) => setSelectedProblem(p)}
+                  onToggleStatus={handleToggleStatus}
+                  isLoading={isLoadingQuestions}
+                />
+              )}
+
+              {currentPage === 'favorites' && <Favorites />}
+
+              {currentPage === 'insights' && (
+                <Insights
+                  activeView={insightView}
+                  onViewChange={(view) => setInsightView(view)}
+                  onNavigateToProblems={(tag) => {
+                    handleSelectCategory(tag || null);
+                  }}
+                />
+              )}
+            </>
           )}
         </main>
       </div>
 
-      {/* Direct Evaluation Route without active workspace problem */}
-      {isEvaluationRoute && !selectedProblem && (
-        <EvaluationModal
-          questionId={evalQuestionId}
-          submissionId={evalSubmissionId}
-          onClose={() => {
-            setIsEvaluationRoute(false);
-            setEvalQuestionId(null);
-            setEvalSubmissionId(null);
-            window.location.hash = selectedCategory
-              ? `#/problems?category=${selectedCategory}`
-              : '#/problems';
-          }}
-          onConfirmSolved={() => {
-            if (evalQuestionId) {
-              handleStatusChange(evalQuestionId, 'Solved');
-            }
-            setIsEvaluationRoute(false);
-            setEvalQuestionId(null);
-            setEvalSubmissionId(null);
-            window.location.hash = selectedCategory
-              ? `#/problems?category=${selectedCategory}`
-              : '#/problems';
-          }}
-        />
-      )}
-
-      {/* Question-Solving Architecture Workspace (matches Image 1 reference layout) */}
-      {selectedProblem && (
+      {/* Question-Solving Architecture Workspace (rendered when active and not reviewing evaluation) */}
+      {selectedProblem && !isEvaluationRoute && (
         <QuestionWorkspace
           problem={selectedProblem}
           problemsList={problems}
-          initialShowEvaluation={isEvaluationRoute}
+          initialShowEvaluation={false}
           onSelectProblem={(p) => setSelectedProblem(p)}
           onClose={() => {
             setSelectedProblem(null);

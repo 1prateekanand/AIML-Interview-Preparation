@@ -1,6 +1,6 @@
 {
   "name": "CodeNexus - AI/ML Interview Preparation",
-  "description": "CodeNexus AI/ML interview prep platform featuring interactive problem sets across 11 AI/ML domains, personalized study lists, advanced insights analytics, and dynamic theme switching.",
+  "description": "Sabevia — The path to knowledge. AI/ML interview preparation and structured technical learning platform with 8 dynamic color themes and interactive workspace.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
