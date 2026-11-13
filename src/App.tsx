@@ -24,6 +24,9 @@ import {
   fetchSubmissionById,
 } from './services/submissionService';
 import { fetchQuestions } from './services/questionService';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Login } from './components/auth/Login';
+import { ResetPasswordModal } from './components/auth/ResetPasswordModal';
 
 const VALID_PAGES: PageId[] = [
   'dashboard',
@@ -42,6 +45,7 @@ const VALID_INSIGHT_VIEWS: InsightViewId[] = [
 interface ParsedHashResult {
   page: PageId;
   isEvaluation: boolean;
+  isLoginRoute: boolean;
   questionId: number | null;
   submissionId: string | null;
   category: string | null;
@@ -53,6 +57,7 @@ function parseHash(): ParsedHashResult {
     const raw = window.location.hash.replace(/^#\/?/, '');
     const [path, queryString] = raw.split('?');
     const isEvaluation = path === 'evaluation' || path === 'submission';
+    const isLoginRoute = path === 'login' || path === 'auth';
 
     let category: string | null = null;
     let insightView: InsightViewId | null = null;
@@ -89,6 +94,7 @@ function parseHash(): ParsedHashResult {
       return {
         page: 'dashboard',
         isEvaluation: false,
+        isLoginRoute: false,
         questionId: null,
         submissionId: null,
         category: null,
@@ -102,11 +108,12 @@ function parseHash(): ParsedHashResult {
       ? 'problems'
       : 'dashboard';
 
-    return { page, isEvaluation, questionId, submissionId, category, insightView };
+    return { page, isEvaluation, isLoginRoute, questionId, submissionId, category, insightView };
   } catch {
     return {
       page: 'dashboard',
       isEvaluation: false,
+      isLoginRoute: false,
       questionId: null,
       submissionId: null,
       category: null,
@@ -116,13 +123,23 @@ function parseHash(): ParsedHashResult {
 }
 
 function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
   const initialHash = parseHash();
+  const [isLoginRoute, setIsLoginRoute] = useState<boolean>(initialHash.isLoginRoute);
+  const [isGuestMode, setIsGuestMode] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('sabevia_guest_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [currentPage, setCurrentPage] = useState<PageId>(initialHash.page);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialHash.category);
   const [insightView, setInsightView] = useState<InsightViewId | null>(initialHash.insightView);
   const [isEvaluationRoute, setIsEvaluationRoute] = useState<boolean>(initialHash.isEvaluation);
   const [evalQuestionId, setEvalQuestionId] = useState<number | null>(initialHash.questionId);
   const [evalSubmissionId, setEvalSubmissionId] = useState<string | null>(initialHash.submissionId);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   const [problems, setProblems] = useState<Problem[]>(() => {
     try {
@@ -227,9 +244,17 @@ function AppContent() {
     }
   }, [problems]);
 
-  // Sync with browser URL hash (without clobbering evaluation routes)
+  // Sync with browser URL hash (without clobbering evaluation or login routes)
   useEffect(() => {
-    if (isEvaluationRoute || window.location.hash.includes('evaluation') || window.location.hash.includes('submission')) {
+    if (
+      isLoginRoute ||
+      isEvaluationRoute ||
+      window.location.hash.includes('login') ||
+      window.location.hash.includes('auth') ||
+      window.location.hash.includes('evaluation') ||
+      window.location.hash.includes('submission') ||
+      window.location.hash.includes('reset-password')
+    ) {
       return;
     }
     if (currentPage === 'problems' && selectedCategory) {
@@ -244,12 +269,13 @@ function AppContent() {
     } catch {
       // Ignore
     }
-  }, [currentPage, selectedCategory, insightView, isEvaluationRoute]);
+  }, [currentPage, selectedCategory, insightView, isEvaluationRoute, isLoginRoute]);
 
   // Handle browser back / forward navigation
   useEffect(() => {
     const handleHashChange = async () => {
       const parsed = parseHash();
+      setIsLoginRoute(parsed.isLoginRoute);
       setCurrentPage(parsed.page);
       setSelectedCategory(parsed.category);
       setInsightView(parsed.insightView);
@@ -320,9 +346,51 @@ function AppContent() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#05080E] flex items-center justify-center text-white">
+        <div className="flex flex-col items-center gap-3">
+          <img
+            src="/assets/sabevia_login_s_logo.png"
+            alt="Sabevia"
+            className="w-11 h-11 object-contain animate-pulse"
+          />
+          <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-gray-400 font-mono tracking-wider">Sabevia Access</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Render Login view if user navigated to #/login, or if not authenticated and not browsing as guest
+  if (isLoginRoute || (!isAuthenticated && !isGuestMode)) {
+    return (
+      <>
+        <Login
+          onSuccess={() => {
+            setIsLoginRoute(false);
+            setIsGuestMode(false);
+            window.location.hash = '#/dashboard';
+          }}
+          onContinueAsGuest={() => {
+            setIsGuestMode(true);
+            try {
+              sessionStorage.setItem('sabevia_guest_mode', 'true');
+            } catch {
+              // Ignore
+            }
+            setIsLoginRoute(false);
+            window.location.hash = '#/dashboard';
+          }}
+        />
+        <ResetPasswordModal />
+      </>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] transition-colors duration-200">
-      {/* Left Sidebar Navigation with Expandable Problems Submenu */}
+      {/* Left Sidebar Navigation with Circular Emblem and Illuminated Navigation */}
       <Sidebar
         currentPage={currentPage}
         onSelectPage={(page) => {
@@ -331,6 +399,7 @@ function AppContent() {
           setSelectedProblem(null);
           setEvalQuestionId(null);
           setEvalSubmissionId(null);
+          setIsMobileMenuOpen(false);
           if (page === 'insights' && currentPage === 'insights') {
             setInsightView(null);
           } else if (page !== 'insights') {
@@ -340,6 +409,8 @@ function AppContent() {
         selectedCategory={selectedCategory}
         onSelectCategory={handleSelectCategory}
         problems={problems}
+        isOpenMobile={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
       {/* Main Viewport Container */}
@@ -352,6 +423,7 @@ function AppContent() {
           onNavigateToProblems={() => {
             setCurrentPage('problems');
           }}
+          onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
         />
 
         {/* Page Content Viewport */}
@@ -414,6 +486,7 @@ function AppContent() {
                   onNavigateToProblems={(tag) => {
                     handleSelectCategory(tag || null);
                   }}
+                  problems={problems}
                 />
               )}
             </>
@@ -445,14 +518,19 @@ function AppContent() {
           onStatusChange={handleStatusChange}
         />
       )}
+
+      {/* Password Recovery Modal overlay if active */}
+      <ResetPasswordModal />
     </div>
   );
 }
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

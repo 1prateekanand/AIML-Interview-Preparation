@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bell, CheckCircle2, Award, X, ChevronDown } from 'lucide-react';
+import { Search, Bell, CheckCircle2, Award, X, ChevronDown, Menu, LogOut, LogIn } from 'lucide-react';
 import { ThemeSelector } from './ThemeSelector';
+import { useAuth } from '../context/AuthContext';
 import { PageId } from '../types';
 
 interface HeaderProps {
@@ -8,6 +9,7 @@ interface HeaderProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onNavigateToProblems: () => void;
+  onToggleMobileMenu?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -15,7 +17,9 @@ export const Header: React.FC<HeaderProps> = ({
   searchQuery,
   onSearchChange,
   onNavigateToProblems,
+  onToggleMobileMenu,
 }) => {
+  const { profile: userProfile, isAuthenticated, signOut } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -44,9 +48,19 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="h-16 border-b border-[var(--border-subtle)] bg-[var(--bg-main)]/85 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-4 sticky top-0 z-30 transition-colors duration-200">
-      {/* Search Input Area with Ctrl K badge */}
-      <div className="flex-1 max-w-lg">
-        <div className="relative">
+      {/* Mobile Hamburger Button + Search Input Area with Ctrl K badge */}
+      <div className="flex items-center gap-3 flex-1 max-w-lg">
+        {onToggleMobileMenu && (
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            aria-label="Toggle menu"
+            className="md:hidden p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] transition-colors cursor-pointer shrink-0"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+        )}
+        <div className="relative flex-1">
           <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
@@ -131,13 +145,17 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center gap-2 pl-1 sm:pl-2 pr-2 py-1 rounded-full hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer border border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
-            {/* Circular Avatar with Initial A or Photo */}
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[var(--accent)] text-[var(--bg-main)] font-bold text-xs flex items-center justify-center shadow-xs">
-              A
+            {/* Circular Avatar with Dynamic Initial or Photo */}
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[var(--accent)] text-[var(--bg-main)] font-bold text-xs flex items-center justify-center shadow-xs overflow-hidden">
+              {userProfile.avatarUrl ? (
+                <img src={userProfile.avatarUrl} alt={userProfile.fullName} className="w-full h-full object-cover" />
+              ) : (
+                userProfile.avatarLetter
+              )}
             </div>
             <div className="text-left hidden md:flex items-center gap-1.5">
               <span className="text-xs font-semibold text-[var(--text-primary)]">
-                Alex Brown
+                {userProfile.fullName}
               </span>
               <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />
             </div>
@@ -147,8 +165,8 @@ export const Header: React.FC<HeaderProps> = ({
           {showProfileMenu && (
             <div className="absolute right-0 mt-2 w-56 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-xs">
               <div className="p-2 border-b border-[var(--border-subtle)]">
-                <p className="font-semibold text-[var(--text-primary)]">Alex Brown</p>
-                <p className="text-[11px] text-[var(--text-muted)]">alex.brown@sabevia.com</p>
+                <p className="font-semibold text-[var(--text-primary)]">{userProfile.fullName}</p>
+                <p className="text-[11px] text-[var(--text-muted)] truncate">{userProfile.email}</p>
               </div>
               <div className="py-1">
                 <div className="px-2 py-1.5 flex items-center justify-between text-[var(--text-secondary)]">
@@ -161,6 +179,34 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>Practice Progress</span>
                   <span className="font-mono text-[var(--text-primary)] font-semibold">124 questions</span>
                 </div>
+              </div>
+              <div className="pt-1 mt-1 border-t border-[var(--border-subtle)]">
+                {isAuthenticated ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setShowProfileMenu(false);
+                      await signOut();
+                      window.location.hash = '#login';
+                    }}
+                    className="w-full text-left px-2 py-1.5 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      window.location.hash = '#login';
+                    }}
+                    className="w-full text-left px-2 py-1.5 rounded-lg text-[var(--accent)] hover:bg-[var(--accent)]/10 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Sign In</span>
+                  </button>
+                )}
               </div>
             </div>
           )}

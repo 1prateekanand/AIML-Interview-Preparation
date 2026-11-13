@@ -58,6 +58,49 @@ export function setRuntimePublishableKey(key: string): void {
   }
 }
 
+/**
+ * Custom storage adapter that dynamically switches between localStorage and sessionStorage
+ * based on the user's "Remember Me" preference.
+ */
+export const dynamicAuthStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      if (typeof window === 'undefined') return null;
+      const remember = window.localStorage.getItem('sabevia_remember_me') !== 'false';
+      if (remember) {
+        return window.localStorage.getItem(key) || window.sessionStorage.getItem(key);
+      }
+      return window.sessionStorage.getItem(key) || window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      if (typeof window === 'undefined') return;
+      const remember = window.localStorage.getItem('sabevia_remember_me') !== 'false';
+      if (remember) {
+        window.localStorage.setItem(key, value);
+        window.sessionStorage.removeItem(key);
+      } else {
+        window.sessionStorage.setItem(key, value);
+        window.localStorage.removeItem(key);
+      }
+    } catch {
+      // Ignore storage restrictions
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      if (typeof window === 'undefined') return;
+      window.localStorage.removeItem(key);
+      window.sessionStorage.removeItem(key);
+    } catch {
+      // Ignore
+    }
+  },
+};
+
 let cachedClient: SupabaseClient | null = null;
 let lastUsedKey: string = '';
 let lastUsedUrl: string = '';
@@ -80,8 +123,10 @@ export function getSupabaseClient(): SupabaseClient | null {
   try {
     cachedClient = createClient(url, key, {
       auth: {
-        persistSession: false,
-        autoRefreshToken: false,
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: dynamicAuthStorage,
       },
     });
     lastUsedUrl = url;

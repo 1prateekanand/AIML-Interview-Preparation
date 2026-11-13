@@ -12,23 +12,35 @@ import {
   CheckCircle2,
   Clock,
   Zap,
+  Filter,
 } from 'lucide-react';
 import { InsightsDetailHeader } from './InsightsDetailHeader';
 import { useTheme } from '../../context/ThemeContext';
+import { Problem } from '../../types';
+import { useProgressRingsData } from '../../hooks/useProgressRingsData';
 
 interface ProgressRingsDetailProps {
   onBack: () => void;
   onNavigateToProblems?: (difficulty?: string) => void;
+  problems?: Problem[];
 }
 
 export const ProgressRingsDetail: React.FC<ProgressRingsDetailProps> = ({
   onBack,
   onNavigateToProblems,
+  problems,
 }) => {
   const { currentTheme } = useTheme();
-  const accent = currentTheme.tokens.accent;
-  const accentGlow = currentTheme.tokens.accentGlow;
+  const accent = currentTheme.tokens.accent || '#F59E0B';
+  const accentGlow = currentTheme.tokens.accentGlow || 'rgba(245, 158, 11, 0.4)';
+
+  const [categoryFilter, setCategoryFilter] = useState<string>('All Categories');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Easy' | 'Medium' | 'Hard' | null>(null);
+
+  const { rings, overall, categoryName, categoriesList } = useProgressRingsData(
+    problems,
+    categoryFilter
+  );
 
   // Keyboard shortcut: Esc to go back
   useEffect(() => {
@@ -39,74 +51,67 @@ export const ProgressRingsDetail: React.FC<ProgressRingsDetailProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack]);
 
-  // STRICT REQUIREMENT: Keep difficulty colors FIXED across every theme
-  // Easy: Green (#10B981)
-  // Medium: Yellow/Amber (#F59E0B)
-  // Hard: Red (#F43F5E)
-  const rings = [
-    {
-      difficulty: 'Easy' as const,
-      percent: 78,
-      solved: 320,
-      total: 410,
-      color: '#10B981',
-      glowColor: 'rgba(16, 185, 129, 0.4)',
-      bgGlow: 'rgba(16, 185, 129, 0.1)',
-      icon: Box,
-      avgTime: '12 mins',
-      accuracy: '84%',
-      description: 'Foundational algorithmic concepts, two-pointers, hash maps, simple recursion',
-    },
-    {
-      difficulty: 'Medium' as const,
-      percent: 46,
-      solved: 180,
-      total: 390,
-      color: '#F59E0B',
-      glowColor: 'rgba(245, 158, 11, 0.4)',
-      bgGlow: 'rgba(245, 158, 11, 0.1)',
-      icon: Layers,
-      avgTime: '26 mins',
-      accuracy: '62%',
-      description: 'Core interview patterns: BFS/DFS, dynamic programming, heaps, tree traversals',
-    },
-    {
-      difficulty: 'Hard' as const,
-      percent: 22,
-      solved: 80,
-      total: 360,
-      color: '#F43F5E',
-      glowColor: 'rgba(244, 63, 94, 0.4)',
-      bgGlow: 'rgba(244, 63, 94, 0.1)',
-      icon: Triangle,
-      avgTime: '48 mins',
-      accuracy: '41%',
-      description: 'Complex optimizations, multi-dimensional DP, segment trees, graph flows',
-    },
-  ];
-
-  const totalSolved = rings.reduce((acc, r) => acc + r.solved, 0);
-  const totalQuestions = rings.reduce((acc, r) => acc + r.total, 0);
-  const overallPercent = Math.round((totalSolved / totalQuestions) * 100);
-
   // SVG parameters for large rings
   const size = 200;
   const strokeWidth = 14;
   const radius = (size - strokeWidth * 2) / 2;
   const circumference = 2 * Math.PI * radius;
 
+  const getDifficultyIcon = (diff: 'Easy' | 'Medium' | 'Hard') => {
+    switch (diff) {
+      case 'Easy':
+        return Box;
+      case 'Medium':
+        return Layers;
+      case 'Hard':
+        return Triangle;
+    }
+  };
+
+  const getDifficultyDescription = (diff: 'Easy' | 'Medium' | 'Hard') => {
+    switch (diff) {
+      case 'Easy':
+        return 'Foundational concepts, linear algebra, prompt mechanics, and basic evaluation formulas.';
+      case 'Medium':
+        return 'Core engineering patterns: multi-head attention, RAG chunking, hybrid retrieval, agent loops, and KV cache.';
+      case 'Hard':
+        return 'Complex systems: FlashAttention CUDA tiling, distributed 3D parallelism, vLLM paging, and high-throughput vector indexing.';
+    }
+  };
+
+  const activeRing = selectedDifficulty
+    ? rings.find((r) => r.difficulty === selectedDifficulty) || rings[0]
+    : null;
+
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
-      {/* Header with Back Button */}
+      {/* Header with Back Button and Category Filter */}
       <InsightsDetailHeader
         badge="B"
         title="Progress Rings Analytics"
         subtitle="Tier-by-tier question completion, solving velocity, and accuracy metrics"
         onBack={onBack}
+        actions={
+          <div className="flex items-center gap-2">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 focus:outline-none focus:border-amber-400 cursor-pointer max-w-[200px] truncate"
+            >
+              <option value="All Categories">All Categories</option>
+              {categoriesList.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        }
       />
 
-      {/* Overview Stat Cards */}
+      {/* Overview Stat Cards (4 Dynamic Summary Cards) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Total Solved */}
         <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
           <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
             <span>Total Solved</span>
@@ -114,24 +119,45 @@ export const ProgressRingsDetail: React.FC<ProgressRingsDetailProps> = ({
           </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              {totalSolved}
+              {overall.totalSolved}
             </span>
             <span className="text-xs text-[var(--text-muted)] font-mono">
-              / {totalQuestions}
+              / {overall.totalQuestions}
             </span>
           </div>
           <div className="mt-2 w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
-                width: `${overallPercent}%`,
+                width: `${overall.overallCompletion}%`,
                 backgroundColor: accent,
                 boxShadow: `0 0 8px ${accentGlow}`,
               }}
             />
           </div>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1.5 font-mono">
+            {overall.overallCompletion}% completion across {categoryName}
+          </p>
         </div>
 
+        {/* Card 2: Total Questions Available */}
+        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
+            <span>Total Questions</span>
+            <BarChart2 className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="flex items-baseline gap-2 mt-2">
+            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
+              {overall.totalQuestions.toLocaleString()}
+            </span>
+            <span className="text-xs text-[var(--text-muted)]">catalog items</span>
+          </div>
+          <p className="text-[11px] text-[var(--text-secondary)] font-mono mt-1.5 truncate">
+            {overall.easyTotal} Easy • {overall.mediumTotal} Medium • {overall.hardTotal} Hard
+          </p>
+        </div>
+
+        {/* Card 3: Day Streak */}
         <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
           <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
             <span>Day Streak</span>
@@ -139,17 +165,26 @@ export const ProgressRingsDetail: React.FC<ProgressRingsDetailProps> = ({
           </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              12
+              {overall.dayStreak}
             </span>
             <span className="text-xs font-semibold text-emerald-400 font-mono flex items-center gap-0.5">
-              <ArrowUp className="w-3 h-3" /> +3 days
+              {overall.dayStreak > 0 ? (
+                <>
+                  <ArrowUp className="w-3 h-3" /> Active Streak
+                </>
+              ) : (
+                <span className="text-slate-400 font-normal">Start today</span>
+              )}
             </span>
           </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            Personal best: 19 days
+          <p className="text-[11px] text-[var(--text-muted)] mt-1.5">
+            {overall.dayStreak > 0
+              ? 'Consecutive daily learning activity'
+              : 'Complete a problem today to build your streak'}
           </p>
         </div>
 
+        {/* Card 4: Overall Accuracy */}
         <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
           <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
             <span>Overall Accuracy</span>
@@ -157,30 +192,22 @@ export const ProgressRingsDetail: React.FC<ProgressRingsDetailProps> = ({
           </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              63%
+              {overall.overallAccuracy !== null ? `${overall.overallAccuracy}%` : '—'}
             </span>
             <span className="text-xs font-semibold text-emerald-400 font-mono flex items-center gap-0.5">
-              <ArrowUp className="w-3 h-3" /> +7% MoM
+              {overall.overallAccuracy !== null ? (
+                <>
+                  <ArrowUp className="w-3 h-3" /> Live
+                </>
+              ) : (
+                <span className="text-slate-400 font-normal">Pending attempts</span>
+              )}
             </span>
           </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            First-submission pass rate
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>Solving Velocity</span>
-            <Zap className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              14.2
-            </span>
-            <span className="text-xs text-[var(--text-muted)]">problems / week</span>
-          </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            Estimated 6 weeks to complete catalog
+          <p className="text-[11px] text-[var(--text-muted)] mt-1.5">
+            {overall.overallAccuracy !== null
+              ? `Derived from ${overall.totalAttempted} unique attempted problems`
+              : 'No problem submissions recorded yet'}
           </p>
         </div>
       </div>
@@ -193,57 +220,59 @@ export const ProgressRingsDetail: React.FC<ProgressRingsDetailProps> = ({
               DIFFICULTY COMPLETION TIERS
             </h2>
             <p className="text-xs text-[var(--text-muted)] mt-0.5">
-              Select any tier to view specialized practice recommendations
+              Select any tier to view specialized breakdown and practice recommendations
             </p>
           </div>
           <span
             className="text-xs font-mono font-bold px-3 py-1 rounded-full border transition-colors"
             style={{
-              backgroundColor: 'var(--active-nav-bg)',
               borderColor: 'var(--border-accent)',
               color: accent,
+              backgroundColor: 'var(--active-nav-bg)',
             }}
           >
-            {totalSolved} / {totalQuestions} Total
+            {categoryName}
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-4 justify-items-center">
-          {rings.map((item) => {
-            const Icon = item.icon;
+        {/* 3 Interactive Large Rings */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4">
+          {rings.map((ring) => {
+            const Icon = getDifficultyIcon(ring.difficulty);
             const strokeDashoffset =
-              circumference - (item.percent / 100) * circumference;
-            const isSelected = selectedDifficulty === item.difficulty;
+              circumference - (ring.percent / 100) * circumference;
+            const isSelected = selectedDifficulty === ring.difficulty;
 
             return (
               <div
-                key={item.difficulty}
+                key={ring.difficulty}
                 onClick={() =>
-                  setSelectedDifficulty(selectedDifficulty === item.difficulty ? null : item.difficulty)
+                  setSelectedDifficulty(isSelected ? null : ring.difficulty)
                 }
-                className={`w-full max-w-xs flex flex-col items-center cursor-pointer p-6 rounded-2xl transition-all duration-200 border ${
+                className={`p-6 rounded-2xl border transition-all duration-300 cursor-pointer flex flex-col items-center text-center relative group ${
                   isSelected
-                    ? 'bg-[var(--bg-surface-elevated)] shadow-xl'
-                    : 'bg-black/20 hover:bg-[var(--bg-surface-elevated)]/60 border-transparent hover:border-white/10'
+                    ? 'ring-2 shadow-xl scale-[1.02]'
+                    : 'hover:border-slate-600 hover:scale-[1.01]'
                 }`}
                 style={{
-                  borderColor: isSelected ? item.color : undefined,
-                  boxShadow: isSelected ? `0 0 24px ${item.glowColor}` : undefined,
+                  backgroundColor: 'var(--bg-surface-elevated)',
+                  borderColor: isSelected ? ring.color : 'var(--border-subtle)',
+                  boxShadow: isSelected ? `0 0 25px ${ring.glowColor}` : undefined,
                 }}
               >
-                {/* Ring SVG with fixed color */}
-                <div className="relative w-48 h-48 flex items-center justify-center">
+                {/* SVG Ring */}
+                <div className="relative w-48 h-48 flex items-center justify-center my-2">
                   <svg
                     className="w-full h-full transform -rotate-90 overflow-visible"
                     viewBox={`0 0 ${size} ${size}`}
                   >
                     <defs>
                       <filter
-                        id={`glow-fixed-detail-${item.difficulty}`}
-                        x="-30%"
-                        y="-30%"
-                        width="160%"
-                        height="160%"
+                        id={`glow-large-${ring.difficulty}`}
+                        x="-20%"
+                        y="-20%"
+                        width="140%"
+                        height="140%"
                       >
                         <feGaussianBlur stdDeviation="5" result="blur" />
                         <feComposite in="SourceGraphic" in2="blur" operator="over" />
@@ -256,151 +285,89 @@ export const ProgressRingsDetail: React.FC<ProgressRingsDetailProps> = ({
                       cy={size / 2}
                       r={radius}
                       fill="transparent"
-                      stroke="rgba(255, 255, 255, 0.06)"
+                      stroke="rgba(255, 255, 255, 0.08)"
                       strokeWidth={strokeWidth}
                     />
 
-                    {/* Progress Arc with fixed color */}
+                    {/* Glowing Progress Arc */}
                     <circle
                       cx={size / 2}
                       cy={size / 2}
                       r={radius}
                       fill="transparent"
-                      stroke={item.color}
+                      stroke={ring.color}
                       strokeWidth={strokeWidth}
                       strokeDasharray={circumference}
                       strokeDashoffset={strokeDashoffset}
                       strokeLinecap="round"
-                      filter={`url(#glow-fixed-detail-${item.difficulty})`}
+                      filter={`url(#glow-large-${ring.difficulty})`}
                       className="transition-all duration-700 ease-out"
                     />
                   </svg>
 
-                  {/* Inner Ring Labels */}
+                  {/* Inner Content */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
                     <Icon
-                      className="w-6 h-6 mb-1"
-                      style={{ color: item.color }}
+                      className="w-6 h-6 mb-1 transition-transform group-hover:scale-110"
+                      style={{ color: ring.color }}
                     />
                     <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums leading-tight">
-                      {item.percent}%
+                      {ring.percent}%
                     </span>
-                    <span className="text-sm font-bold text-[var(--text-secondary)] mt-0.5">
-                      {item.difficulty}
+                    <span
+                      className="text-xs font-bold uppercase tracking-wider mt-0.5"
+                      style={{ color: ring.color }}
+                    >
+                      {ring.difficulty}
                     </span>
-                    <span className="text-xs text-[var(--text-muted)] font-mono mt-0.5">
-                      {item.solved} / {item.total}
+                    <span className="text-[11px] text-[var(--text-muted)] font-mono tabular-nums mt-0.5">
+                      {ring.solved} / {ring.total} solved
                     </span>
                   </div>
                 </div>
 
                 {/* Sub-metrics */}
-                <div className="w-full grid grid-cols-2 gap-2 mt-5 pt-4 border-t border-white/5 text-center text-xs">
-                  <div>
-                    <span className="text-[10px] text-[var(--text-muted)] block">Avg Time</span>
-                    <span className="font-mono font-bold text-[var(--text-primary)]">
-                      {item.avgTime}
+                <div className="w-full grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-[var(--border-subtle)] text-xs">
+                  <div className="p-2 rounded-xl bg-slate-900/40">
+                    <span className="text-[10px] text-[var(--text-muted)] block">Remaining</span>
+                    <span className="font-bold text-[var(--text-primary)] font-mono">
+                      {ring.remaining}
                     </span>
                   </div>
-                  <div>
+                  <div className="p-2 rounded-xl bg-slate-900/40">
                     <span className="text-[10px] text-[var(--text-muted)] block">Accuracy</span>
-                    <span className="font-mono font-bold" style={{ color: item.color }}>
-                      {item.accuracy}
+                    <span className="font-bold font-mono" style={{ color: ring.color }}>
+                      {ring.accuracy !== null ? `${ring.accuracy}%` : '—'}
                     </span>
                   </div>
                 </div>
 
-                {/* Action button */}
+                <p className="text-xs text-[var(--text-muted)] mt-3 leading-relaxed">
+                  {getDifficultyDescription(ring.difficulty)}
+                </p>
+
+                {/* Action CTA */}
                 {onNavigateToProblems && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onNavigateToProblems(item.difficulty);
+                      onNavigateToProblems(ring.difficulty.toLowerCase());
                     }}
-                    className="w-full mt-4 py-2 px-3 rounded-xl text-xs font-bold text-white transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
-                    style={{ backgroundColor: item.color }}
+                    className="mt-4 w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border"
+                    style={{
+                      backgroundColor: `${ring.color}15`,
+                      borderColor: `${ring.color}40`,
+                      color: ring.color,
+                    }}
                   >
-                    <span>Practice {item.difficulty}</span>
+                    <span>Practice {ring.difficulty} Problems</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* Comprehensive Breakdown Table */}
-      <div className="p-6 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-4">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-          Tier-by-Tier Strategic Analysis
-        </h3>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] uppercase tracking-wider">
-                <th className="pb-3 font-semibold">Tier</th>
-                <th className="pb-3 font-semibold">Solved / Total</th>
-                <th className="pb-3 font-semibold">Completion</th>
-                <th className="pb-3 font-semibold">Pass Rate</th>
-                <th className="pb-3 font-semibold">Avg Solve Time</th>
-                <th className="pb-3 font-semibold">Focus Recommendation</th>
-                <th className="pb-3 font-semibold text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border-subtle)] font-medium">
-              {rings.map((r) => (
-                <tr key={r.difficulty} className="hover:bg-[var(--bg-surface-elevated)]/50 transition-colors">
-                  <td className="py-3.5 flex items-center gap-2 font-bold" style={{ color: r.color }}>
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: r.color }} />
-                    {r.difficulty}
-                  </td>
-                  <td className="py-3.5 font-mono text-[var(--text-primary)]">
-                    {r.solved} / {r.total}
-                  </td>
-                  <td className="py-3.5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${r.percent}%`, backgroundColor: r.color }}
-                        />
-                      </div>
-                      <span className="font-mono font-bold" style={{ color: r.color }}>
-                        {r.percent}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-3.5 font-mono text-[var(--text-primary)]">
-                    {r.accuracy}
-                  </td>
-                  <td className="py-3.5 font-mono text-[var(--text-muted)]">
-                    {r.avgTime}
-                  </td>
-                  <td className="py-3.5 text-[var(--text-secondary)] max-w-xs truncate">
-                    {r.description}
-                  </td>
-                  <td className="py-3.5 text-right">
-                    {onNavigateToProblems && (
-                      <button
-                        type="button"
-                        onClick={() => onNavigateToProblems(r.difficulty)}
-                        className="px-3 py-1 rounded-lg text-xs font-semibold border cursor-pointer transition-colors"
-                        style={{
-                          borderColor: r.color,
-                          color: r.color,
-                        }}
-                      >
-                        Filter
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

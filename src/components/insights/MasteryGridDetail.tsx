@@ -1,50 +1,63 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar,
   Flame,
   Target,
   ArrowUp,
+  ArrowDown,
   Clock,
   Sparkles,
   BarChart3,
-  CheckCircle,
+  CheckCircle2,
+  Filter,
+  ArrowRight,
+  TrendingUp,
 } from 'lucide-react';
-import { HeatmapDay } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
+import { Problem } from '../../types';
+import {
+  useMasteryGridData,
+  MasteryTimeRange,
+  MasteryDayData,
+} from '../../hooks/useMasteryGridData';
 import { InsightsDetailHeader } from './InsightsDetailHeader';
-
-function hexToRgb(hex: string): [number, number, number] {
-  const clean = hex.replace('#', '');
-  if (clean.length === 3) {
-    const r = parseInt(clean[0] + clean[0], 16);
-    const g = parseInt(clean[1] + clean[1], 16);
-    const b = parseInt(clean[2] + clean[2], 16);
-    return [r, g, b];
-  }
-  const r = parseInt(clean.substring(0, 2), 16) || 16;
-  const g = parseInt(clean.substring(2, 4), 16) || 185;
-  const b = parseInt(clean.substring(4, 6), 16) || 129;
-  return [r, g, b];
-}
+import { MasteryDateModal } from './MasteryDateModal';
 
 interface MasteryGridDetailProps {
   onBack: () => void;
-  onNavigateToProblems?: () => void;
+  onNavigateToProblems?: (category?: string) => void;
+  problems?: Problem[];
 }
 
 export const MasteryGridDetail: React.FC<MasteryGridDetailProps> = ({
   onBack,
   onNavigateToProblems,
+  problems,
 }) => {
   const { currentTheme } = useTheme();
-  const [timeRange, setTimeRange] = useState<'3m' | '6m' | '1y'>('3m');
+  const accent = currentTheme.tokens.accent || '#F59E0B';
+
+  const [timeRange, setTimeRange] = useState<MasteryTimeRange>('12m');
+  const [customStart, setCustomStart] = useState<string>('');
+  const [customEnd, setCustomEnd] = useState<string>('');
+  const [showCustomPicker, setShowCustomPicker] = useState<boolean>(false);
+
   const [hoveredCell, setHoveredCell] = useState<{
     date: string;
     count: number;
+    accuracy: number | null;
     x: number;
     y: number;
   } | null>(null);
-  const [selectedDate, setSelectedDate] = useState<HeatmapDay | null>(null);
+
+  const [selectedDay, setSelectedDay] = useState<MasteryDayData | null>(null);
+
+  const { weeks, monthLabels, overall, allDays } = useMasteryGridData(
+    problems,
+    timeRange,
+    customStart,
+    customEnd
+  );
 
   // Keyboard shortcut: Esc to go back
   useEffect(() => {
@@ -55,72 +68,15 @@ export const MasteryGridDetail: React.FC<MasteryGridDetailProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack]);
 
-  const accent = currentTheme.tokens.accent;
-  const accentSecondary = currentTheme.tokens.accentSecondary;
-  const [r, g, b] = useMemo(() => hexToRgb(accent), [accent]);
-
-  const totalWeeks = timeRange === '1y' ? 52 : timeRange === '6m' ? 26 : 14;
-
-  const weeksData = useMemo(() => {
-    const weeks: HeatmapDay[][] = [];
-    const baseDate = new Date(2024, 9, 1);
-
-    for (let w = 0; w < totalWeeks; w++) {
-      const week: HeatmapDay[] = [];
-      for (let d = 0; d < 7; d++) {
-        const currentDate = new Date(baseDate);
-        currentDate.setDate(baseDate.getDate() + w * 7 + d);
-
-        let count = 0;
-        let level: 0 | 1 | 2 | 3 | 4 = 0;
-
-        const dayNum = w * 7 + d;
-        const hash = (dayNum * 17 + w * 3) % 29;
-
-        if (dayNum >= totalWeeks * 7 - 12) {
-          count = 4 + (dayNum % 6);
-          level = count >= 8 ? 4 : count >= 5 ? 3 : 2;
-        } else if (hash > 21) {
-          count = 11 + (hash % 5);
-          level = 4;
-        } else if (hash > 15) {
-          count = 6 + (hash % 4);
-          level = 3;
-        } else if (hash > 10) {
-          count = 3 + (hash % 3);
-          level = 2;
-        } else if (hash > 6) {
-          count = 1 + (hash % 2);
-          level = 1;
-        } else {
-          count = 0;
-          level = 0;
-        }
-
-        const dateStr = currentDate.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        });
-
-        week.push({
-          date: dateStr,
-          dayOfWeek: d,
-          count,
-          level,
-        });
-      }
-      weeks.push(week);
+  const getCellInlineStyle = (level: 0 | 1 | 2 | 3 | 4, isFuture: boolean): React.CSSProperties => {
+    if (isFuture) {
+      return {
+        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+        borderColor: 'rgba(255, 255, 255, 0.04)',
+        opacity: 0.35,
+      };
     }
 
-    return weeks;
-  }, [totalWeeks]);
-
-  const allDays = weeksData.flat();
-  const activeDaysCount = allDays.filter((d) => d.count > 0).length;
-  const totalSubmissions = allDays.reduce((acc, d) => acc + d.count, 0);
-
-  const getCellInlineStyle = (level: 0 | 1 | 2 | 3 | 4): React.CSSProperties => {
     switch (level) {
       case 0:
         return {
@@ -129,213 +85,266 @@ export const MasteryGridDetail: React.FC<MasteryGridDetailProps> = ({
         };
       case 1:
         return {
-          backgroundColor: `rgba(${r}, ${g}, ${b}, 0.25)`,
-          borderColor: `rgba(${r}, ${g}, ${b}, 0.4)`,
+          backgroundColor: 'rgba(245, 158, 11, 0.25)',
+          borderColor: 'rgba(245, 158, 11, 0.40)',
         };
       case 2:
         return {
-          backgroundColor: `rgba(${r}, ${g}, ${b}, 0.5)`,
-          borderColor: `rgba(${r}, ${g}, ${b}, 0.7)`,
+          backgroundColor: 'rgba(245, 158, 11, 0.50)',
+          borderColor: 'rgba(245, 158, 11, 0.65)',
         };
       case 3:
         return {
-          backgroundColor: `rgba(${r}, ${g}, ${b}, 0.8)`,
-          borderColor: accent,
-          boxShadow: `0 0 8px rgba(${r}, ${g}, ${b}, 0.35)`,
+          backgroundColor: 'rgba(245, 158, 11, 0.80)',
+          borderColor: '#F59E0B',
+          boxShadow: '0 0 8px rgba(245, 158, 11, 0.4)',
         };
       case 4:
         return {
-          backgroundColor: accent,
-          borderColor: accentSecondary,
-          boxShadow: `0 0 12px rgba(${r}, ${g}, ${b}, 0.65)`,
+          backgroundColor: '#F59E0B',
+          borderColor: '#FBBF24',
+          boxShadow: '0 0 12px rgba(245, 158, 11, 0.75)',
         };
       default:
         return {};
     }
   };
 
+  const handleRangeChange = (val: string) => {
+    if (val === 'custom') {
+      setShowCustomPicker(true);
+      setTimeRange('custom');
+    } else {
+      setShowCustomPicker(false);
+      setTimeRange(val as MasteryTimeRange);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
-      {/* Header with Back Button */}
+      {/* Header with Back Navigation and Date Range Selector */}
       <InsightsDetailHeader
         badge="D"
-        title="Mastery Grid Activity Log"
-        subtitle="Long-term coding consistency, daily commit frequency, and streak resilience"
+        title="Mastery Grid Activity Heatmap"
+        subtitle="Daily practice consistency, commit momentum, and streak tracking"
         onBack={onBack}
         actions={
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)]">
-            <button
-              type="button"
-              onClick={() => setTimeRange('3m')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                timeRange === '3m'
-                  ? 'bg-[var(--accent)] text-[var(--bg-main)] shadow-xs'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
+          <div className="flex items-center gap-2">
+            <select
+              value={timeRange}
+              onChange={(e) => handleRangeChange(e.target.value)}
+              className="bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 focus:outline-none focus:border-amber-400 cursor-pointer"
             >
-              Past 3 Months
-            </button>
-            <button
-              type="button"
-              onClick={() => setTimeRange('6m')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                timeRange === '6m'
-                  ? 'bg-[var(--accent)] text-[var(--bg-main)] shadow-xs'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              Past 6 Months
-            </button>
-            <button
-              type="button"
-              onClick={() => setTimeRange('1y')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                timeRange === '1y'
-                  ? 'bg-[var(--accent)] text-[var(--bg-main)] shadow-xs'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              This Year
-            </button>
+              <option value="30d">Past 30 Days</option>
+              <option value="3m">Past 3 Months</option>
+              <option value="6m">Past 6 Months</option>
+              <option value="12m">Past 12 Months</option>
+              <option value="this_year">This Year</option>
+              <option value="all_time">All Time</option>
+              <option value="custom">Custom Range</option>
+            </select>
           </div>
         }
       />
 
-      {/* Top Activity Summary Cards */}
+      {/* Custom Date Range Picker inputs when selected */}
+      {showCustomPicker && (
+        <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-slate-900 border border-white/10 text-xs text-slate-300">
+          <span className="font-semibold text-amber-400">Custom Date Range:</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 text-[11px]">Start:</span>
+            <input
+              type="date"
+              value={customStart}
+              onChange={(e) => setCustomStart(e.target.value)}
+              className="bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-xs text-white"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 text-[11px]">End:</span>
+            <input
+              type="date"
+              value={customEnd}
+              onChange={(e) => setCustomEnd(e.target.value)}
+              className="bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-xs text-white"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Top 4 Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Problems Solved */}
         <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
           <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>Active Coding Days</span>
-            <Calendar className="w-4 h-4" style={{ color: accent }} />
+            <span>Problems Solved</span>
+            <Target className="w-4 h-4 text-amber-400" />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              {activeDaysCount}
+              {overall.periodSolved}
+            </span>
+            {overall.percentageChange !== null && (
+              <span
+                className={`text-xs font-semibold font-mono inline-flex items-center gap-0.5 ${
+                  overall.percentageChange >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                }`}
+              >
+                {overall.percentageChange >= 0 ? (
+                  <ArrowUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ArrowDown className="w-3.5 h-3.5" />
+                )}
+                {Math.abs(overall.percentageChange)}%
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1">
+            Across selected timeline window
+          </p>
+        </div>
+
+        {/* Card 2: Day Streak */}
+        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
+            <span>Day Streak</span>
+            <Flame className="w-4 h-4 text-amber-400 fill-amber-400" />
+          </div>
+          <div className="flex items-baseline gap-2 mt-2">
+            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
+              {overall.dayStreak}
+            </span>
+            <span className="text-xs font-semibold text-emerald-400 font-mono flex items-center gap-0.5">
+              {overall.dayStreak > 0 ? (
+                <>
+                  <ArrowUp className="w-3 h-3" /> Active
+                </>
+              ) : (
+                <span className="text-slate-400 font-normal">0 days</span>
+              )}
+            </span>
+          </div>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1">
+            Consecutive calendar activity days
+          </p>
+        </div>
+
+        {/* Card 3: Overall Accuracy */}
+        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
+            <span>Overall Accuracy</span>
+            <BarChart3 className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="flex items-baseline gap-2 mt-2">
+            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
+              {overall.overallAccuracy !== null ? `${overall.overallAccuracy}%` : '—'}
+            </span>
+            <span className="text-xs font-semibold text-emerald-400 font-mono flex items-center gap-0.5">
+              Live
+            </span>
+          </div>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1">
+            Solved vs. attempted submissions
+          </p>
+        </div>
+
+        {/* Card 4: Active Practice Days */}
+        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
+            <span>Active Days</span>
+            <Calendar className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="flex items-baseline gap-2 mt-2">
+            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
+              {overall.activeDaysCount}
             </span>
             <span className="text-xs text-[var(--text-muted)] font-mono">
               / {allDays.length} days
             </span>
           </div>
           <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            {Math.round((activeDaysCount / allDays.length) * 100)}% consistency rate
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>Current Streak</span>
-            <Flame className="w-4 h-4 text-amber-400 fill-amber-400" />
-          </div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              12
-            </span>
-            <span className="text-xs font-semibold text-emerald-400 font-mono">
-              Active Now
-            </span>
-          </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            Longest recorded: 19 days
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>Total Submissions</span>
-            <Target className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              {totalSubmissions}
-            </span>
-            <span className="text-xs font-semibold text-emerald-400 font-mono flex items-center gap-0.5">
-              <ArrowUp className="w-3 h-3" /> +27%
-            </span>
-          </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            Average {(totalSubmissions / activeDaysCount || 0).toFixed(1)} solves/day
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>Peak Activity Day</span>
-            <Sparkles className="w-4 h-4 text-yellow-400" />
-          </div>
-          <div className="mt-2 text-xl font-bold text-[var(--text-primary)]">
-            Wednesday
-          </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            Avg 4.8 questions solved mid-week
+            Days with qualifying problem completions
           </p>
         </div>
       </div>
 
-      {/* Full-Width Interactive Heatmap Viewport */}
+      {/* Main Heatmap Canvas Card */}
       <div className="p-6 md:p-8 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-[var(--text-primary)] tracking-wide">
-              ACTIVITY MATRIX
+              CONTRIBUTION HEATMAP
             </h2>
             <p className="text-xs text-[var(--text-muted)] mt-0.5">
-              Hover over any square for daily count; click to inspect recorded problems
+              Click any calendar square to inspect problem breakdown for that date
             </p>
           </div>
-
-          {/* Dynamic Theme Legend */}
-          <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-            <span className="text-[11px]">Less</span>
-            <span className="w-3.5 h-3.5 rounded-xs border" style={getCellInlineStyle(0)} />
-            <span className="w-3.5 h-3.5 rounded-xs border" style={getCellInlineStyle(1)} />
-            <span className="w-3.5 h-3.5 rounded-xs border" style={getCellInlineStyle(2)} />
-            <span className="w-3.5 h-3.5 rounded-xs border" style={getCellInlineStyle(3)} />
-            <span className="w-3.5 h-3.5 rounded-xs border" style={getCellInlineStyle(4)} />
-            <span className="text-[11px]">More</span>
-          </div>
+          <span
+            className="text-xs font-mono font-bold px-3 py-1 rounded-full border"
+            style={{
+              borderColor: 'rgba(245, 158, 11, 0.3)',
+              color: accent,
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            }}
+          >
+            {overall.periodSolved} Solved in Period
+          </span>
         </div>
 
-        {/* Heatmap Grid */}
+        {/* Heatmap Grid with horizontal scroll */}
         <div className="overflow-x-auto py-2 custom-scrollbar">
-          <div className="min-w-fit">
+          <div className="min-w-[650px] inline-block">
+            {/* Dynamic Month Labels */}
+            <div className="relative h-4 mb-2 pl-8 text-[11px] text-[var(--text-muted)] font-medium">
+              {monthLabels.map((m, idx) => (
+                <span
+                  key={`${m.label}-${idx}`}
+                  className="absolute transform -translate-x-1"
+                  style={{ left: `${m.weekIndex * 20 + 32}px` }}
+                >
+                  {m.label}
+                </span>
+              ))}
+            </div>
+
+            {/* Grid with Weekday Labels on the left (Mon, Wed, Fri) */}
             <div className="flex gap-2">
-              {/* Day of Week Labels */}
-              <div className="flex flex-col justify-between text-[11px] text-[var(--text-muted)] font-mono py-1 w-8 shrink-0 select-none">
-                <span className="h-4 leading-4">Mon</span>
-                <span className="h-4 leading-4">Wed</span>
-                <span className="h-4 leading-4">Fri</span>
-                <span className="h-4 leading-4">Sun</span>
+              <div className="flex flex-col justify-between text-[10px] text-[var(--text-muted)] font-mono py-0.5 w-6 shrink-0 select-none">
+                <span className="h-3.5 leading-3.5">Mon</span>
+                <span className="h-3.5 leading-3.5">Wed</span>
+                <span className="h-3.5 leading-3.5">Fri</span>
               </div>
 
-              {/* Weeks columns */}
-              <div className="flex gap-1.5 flex-1">
-                {weeksData.map((week, wIdx) => (
-                  <div key={wIdx} className="flex flex-col gap-1.5">
-                    {week.map((day, dIdx) => {
-                      const isSelected = selectedDate?.date === day.date;
-                      const cellStyle = getCellInlineStyle(day.level);
+              {/* Columns of Weeks */}
+              <div className="flex gap-1 flex-1">
+                {weeks.map((week, wIdx) => (
+                  <div key={`wk-detail-${wIdx}`} className="flex flex-col gap-1">
+                    {week.map((day) => {
+                      const cellStyle = getCellInlineStyle(day.level, day.isFuture);
 
                       return (
                         <div
-                          key={dIdx}
-                          style={{
-                            ...cellStyle,
-                            transform: isSelected ? 'scale(1.25)' : undefined,
-                            zIndex: isSelected ? 10 : undefined,
+                          key={`cell-${day.date}`}
+                          style={cellStyle}
+                          onClick={() => {
+                            if (!day.isFuture) setSelectedDay(day);
                           }}
-                          onClick={() => setSelectedDate(day)}
                           onMouseEnter={(e) => {
+                            if (day.isFuture) return;
                             const rect = e.currentTarget.getBoundingClientRect();
                             setHoveredCell({
-                              date: day.date,
+                              date: day.displayDate,
                               count: day.count,
+                              accuracy: day.accuracy,
                               x: rect.left + rect.width / 2,
                               y: rect.top,
                             });
                           }}
                           onMouseLeave={() => setHoveredCell(null)}
-                          className={`w-4 h-4 rounded-xs border transition-all duration-150 cursor-pointer hover:scale-120 ${
-                            isSelected ? 'ring-2 ring-white' : ''
+                          className={`w-3.5 h-3.5 rounded-xs border transition-all duration-150 ${
+                            day.isFuture
+                              ? 'cursor-default'
+                              : 'cursor-pointer hover:scale-125 hover:z-20'
                           }`}
                         />
                       );
@@ -344,64 +353,52 @@ export const MasteryGridDetail: React.FC<MasteryGridDetailProps> = ({
                 ))}
               </div>
             </div>
+
+            {/* Legend */}
+            <div className="flex items-center justify-end gap-2 mt-4 text-[10px] text-[var(--text-muted)]">
+              <span>No activity</span>
+              <span className="w-3 h-3 rounded-xs border" style={getCellInlineStyle(0, false)} />
+              <span className="w-3 h-3 rounded-xs border" style={getCellInlineStyle(1, false)} />
+              <span className="text-[10px]">1-2</span>
+              <span className="w-3 h-3 rounded-xs border" style={getCellInlineStyle(2, false)} />
+              <span className="text-[10px]">3-5</span>
+              <span className="w-3 h-3 rounded-xs border" style={getCellInlineStyle(3, false)} />
+              <span className="text-[10px]">6-10</span>
+              <span className="w-3 h-3 rounded-xs border" style={getCellInlineStyle(4, false)} />
+              <span className="text-[10px]">11+</span>
+            </div>
           </div>
         </div>
-
-        {/* Floating Tooltip */}
-        {hoveredCell && (
-          <div
-            className="fixed z-50 pointer-events-none -translate-x-1/2 -translate-y-full mb-2 px-3 py-1.5 rounded-xl bg-[var(--bg-surface-elevated)] border border-[var(--border-accent)] text-xs shadow-2xl text-center whitespace-nowrap"
-            style={{ left: hoveredCell.x, top: hoveredCell.y - 8 }}
-          >
-            <div className="font-bold text-[var(--text-primary)]">
-              {hoveredCell.count === 0
-                ? 'No problems solved'
-                : `${hoveredCell.count} problem${hoveredCell.count > 1 ? 's' : ''} solved`}
-            </div>
-            <div className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">
-              {hoveredCell.date}
-            </div>
-          </div>
-        )}
-
-        {/* Selected Date Inspector Card */}
-        {selectedDate && (
-          <div className="p-4 rounded-xl bg-[var(--bg-surface-elevated)] border border-[var(--border-accent)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-150">
-            <div className="flex items-center gap-3">
-              <span
-                className="w-10 h-10 rounded-xl flex items-center justify-center font-mono font-bold text-sm border"
-                style={{
-                  backgroundColor: 'var(--active-nav-bg)',
-                  borderColor: 'var(--border-accent)',
-                  color: accent,
-                }}
-              >
-                {selectedDate.count}
-              </span>
-              <div>
-                <h4 className="text-sm font-bold text-[var(--text-primary)]">
-                  Activity for {selectedDate.date}
-                </h4>
-                <p className="text-xs text-[var(--text-muted)]">
-                  {selectedDate.count === 0
-                    ? 'No submissions logged on this date.'
-                    : `Completed ${selectedDate.count} problems including algorithmic optimizations.`}
-                </p>
-              </div>
-            </div>
-
-            {onNavigateToProblems && (
-              <button
-                type="button"
-                onClick={onNavigateToProblems}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--accent)] text-[var(--bg-main)] hover:bg-[var(--accent-hover)] transition-colors cursor-pointer self-start sm:self-auto"
-              >
-                Practice More Today
-              </button>
-            )}
-          </div>
-        )}
       </div>
+
+      {/* Floating Hover Tooltip */}
+      {hoveredCell && (
+        <div
+          className="fixed z-50 pointer-events-none -translate-x-1/2 -translate-y-full mb-2 px-3 py-2 rounded-xl bg-slate-900 border border-amber-400/40 text-xs shadow-2xl text-center whitespace-nowrap"
+          style={{ left: hoveredCell.x, top: hoveredCell.y - 8 }}
+        >
+          <div className="font-bold text-white text-xs">
+            {hoveredCell.count === 0
+              ? 'No questions solved'
+              : `${hoveredCell.count} question${hoveredCell.count > 1 ? 's' : ''} solved`}
+          </div>
+          {hoveredCell.accuracy !== null && (
+            <div className="text-[11px] text-amber-400 font-mono mt-0.5">
+              Accuracy: {hoveredCell.accuracy}%
+            </div>
+          )}
+          <div className="text-[10px] text-slate-400 mt-0.5">
+            {hoveredCell.date}
+          </div>
+        </div>
+      )}
+
+      {/* Date Inspection Modal on Click */}
+      <MasteryDateModal
+        day={selectedDay}
+        onClose={() => setSelectedDay(null)}
+        onNavigateToProblems={onNavigateToProblems}
+      />
     </div>
   );
 };

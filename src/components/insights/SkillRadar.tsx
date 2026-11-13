@@ -1,359 +1,492 @@
-import React, { useState } from 'react';
-import { ChevronDown, ArrowUp, Maximize2 } from 'lucide-react';
-import { CATEGORY_SKILLS } from '../../data/mockData';
-import { CategorySkill } from '../../types';
+import React, { useState, useMemo } from 'react';
+import {
+  Brain,
+  Layers,
+  Bot,
+  Code,
+  ShieldCheck,
+  Rocket,
+  Maximize2,
+  ChevronDown,
+  Info,
+  Sparkles,
+} from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { Problem } from '../../types';
+import { useSkillRadarData, DomainMetric } from '../../hooks/useSkillRadarData';
+import { SkillRadarTooltip } from './SkillRadarTooltip';
+import { SkillDomainDetails } from './SkillDomainDetails';
 
 interface SkillRadarProps {
+  problems?: Problem[];
   onSelectCategory?: (category: string) => void;
   onOpenDetail?: () => void;
 }
 
 export const SkillRadar: React.FC<SkillRadarProps> = ({
+  problems,
   onSelectCategory,
   onOpenDetail,
 }) => {
   const { currentTheme } = useTheme();
-  const [filter, setFilter] = useState<string>('All Categories');
-  const [hoveredSkill, setHoveredSkill] = useState<CategorySkill | null>(null);
-  const [selectedSkill, setSelectedSkill] = useState<CategorySkill | null>(null);
+  const { domains, overall, insufficientDataNotice } = useSkillRadarData(problems);
 
-  // Dynamic theme colors
-  const accent = currentTheme.tokens.accent;
-  const accentSecondary = currentTheme.tokens.accentSecondary;
-  const accentGlow = currentTheme.tokens.accentGlow;
+  const [hoveredDomainId, setHoveredDomainId] = useState<string | null>(null);
+  const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
 
-  // Six axes for radar
-  const skills = CATEGORY_SKILLS;
-  const numAxes = skills.length;
-  const center = 150;
-  const radius = 100;
+  // Active theme accent & glows
+  const accent = currentTheme.tokens.accent || '#F59E0B';
+  const accentSecondary = currentTheme.tokens.accentSecondary || '#FFC247';
+  const accentGlow = currentTheme.tokens.accentGlow || 'rgba(245, 158, 11, 0.35)';
 
-  // Calculate polygon coordinates based on proficiency % (0 - 100)
-  // Angles start at -90deg (top: Arrays)
-  const getCoordinates = (index: number, valueRatio: number) => {
-    const angle = (Math.PI * 2 * index) / numAxes - Math.PI / 2;
-    const r = radius * valueRatio;
+  // Radar chart geometry parameters
+  const viewBoxWidth = 560;
+  const viewBoxHeight = 440;
+  const center = { x: 280, y: 220 };
+  const radius = 130;
+  const numAxes = 6;
+
+  // Concentric hexagonal grid rings (20%, 40%, 60%, 80%, 100%)
+  const gridLevels = [0.2, 0.4, 0.6, 0.8, 1.0];
+
+  // Axis angles (starting top-left at -120° and rotating clockwise)
+  // 0: -120° (Top-Left - ML & DL)
+  // 1: -60°  (Top-Right - LLM & Retrieval)
+  // 2: 0°    (Right - Agentic AI)
+  // 3: 60°   (Bottom-Right - AI Engineering)
+  // 4: 120°  (Bottom-Left - Eval & Responsible AI)
+  // 5: 180°  (Left - Production & Deployment)
+  const getAngle = (index: number) => {
+    return (index * (2 * Math.PI)) / numAxes - (2 * Math.PI) / 3;
+  };
+
+  const getCoordinates = (index: number, valueRatio: number, rOffset = 0) => {
+    const angle = getAngle(index);
+    const r = radius * Math.max(0.08, Math.min(1.0, valueRatio)) + rOffset;
     return {
-      x: center + r * Math.cos(angle),
-      y: center + r * Math.sin(angle),
+      x: center.x + r * Math.cos(angle),
+      y: center.y + r * Math.sin(angle),
     };
   };
 
-  // Concentric polygon background grid rings (20%, 40%, 60%, 80%, 100%)
-  const gridLevels = [0.2, 0.4, 0.6, 0.8, 1.0];
+  // Coordinates for the 6 outer vertices (100% boundary)
+  const outerVertices = useMemo(() => {
+    return domains.map((_, i) => getCoordinates(i, 1.0));
+  }, [domains]);
 
-  // Polygon points string for the user data
-  const dataPoints = skills
-    .map((skill, i) => {
-      const { x, y } = getCoordinates(i, skill.proficiency / 100);
-      return `${x},${y}`;
-    })
-    .join(' ');
+  // Coordinates for user data polygon based on proficiency (0-100%)
+  // If no data, use a subtle 15% inner baseline polygon
+  const userPolygonPoints = useMemo(() => {
+    return domains
+      .map((d, i) => {
+        const ratio = d.hasSufficientData ? d.proficiency / 100 : 0.12;
+        const coords = getCoordinates(i, ratio);
+        return `${coords.x},${coords.y}`;
+      })
+      .join(' ');
+  }, [domains]);
 
-  const activeInspectSkill = hoveredSkill || selectedSkill;
+  const hoveredDomain = domains.find((d) => d.id === hoveredDomainId) || null;
+  const selectedDomain = domains.find((d) => d.id === selectedDomainId) || null;
+
+  const handleVertexClick = (domain: DomainMetric) => {
+    if (selectedDomainId === domain.id) {
+      setSelectedDomainId(null);
+    } else {
+      setSelectedDomainId(domain.id);
+    }
+  };
+
+  const renderIcon = (iconName: string, className = 'w-3.5 h-3.5') => {
+    switch (iconName) {
+      case 'Brain':
+        return <Brain className={className} />;
+      case 'Layers':
+        return <Layers className={className} />;
+      case 'Bot':
+        return <Bot className={className} />;
+      case 'Code':
+        return <Code className={className} />;
+      case 'ShieldCheck':
+        return <ShieldCheck className={className} />;
+      case 'Rocket':
+        return <Rocket className={className} />;
+      default:
+        return <Brain className={className} />;
+    }
+  };
 
   return (
-    <div
-      onClick={onOpenDetail}
-      className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-5 md:p-6 flex flex-col justify-between relative overflow-hidden transition-all duration-200 hover:border-[var(--border-accent)] hover:shadow-lg cursor-pointer group"
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex items-start gap-3">
-          <span className="w-6 h-6 rounded-lg bg-[var(--active-nav-bg)] text-[var(--accent)] font-bold text-xs flex items-center justify-center shrink-0 border border-[var(--border-accent)]">
+    <div className="rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-5 sm:p-6 transition-all duration-300 relative overflow-hidden shadow-xl space-y-6">
+      {/* 1. Header with Title & Detail Action */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border-subtle)]">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 border transition-colors shadow-xs"
+            style={{
+              backgroundColor: 'var(--active-nav-bg)',
+              borderColor: 'var(--border-accent)',
+              color: 'var(--accent)',
+            }}
+          >
             A
-          </span>
+          </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-[var(--text-primary)] tracking-wide group-hover:text-[var(--accent)] transition-colors">
+              <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)] tracking-wide">
                 SKILL RADAR
               </h2>
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-semibold text-[var(--accent)]">
-                View Full Analytics →
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider font-mono transition-colors"
+                style={{
+                  backgroundColor: 'var(--active-nav-bg)',
+                  borderColor: 'var(--border-accent)',
+                  color: 'var(--accent)',
+                }}
+              >
+                6 Domains
               </span>
             </div>
             <p className="text-xs text-[var(--text-muted)] mt-0.5">
-              Your strength across key problem categories
+              Live algorithmic and AI engineering mastery across all 11 core categories
             </p>
           </div>
         </div>
 
-        {/* Category Filter & Full View Action */}
-        <div className="flex items-center gap-2">
-          <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="appearance-none bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded-xl pl-3 pr-8 py-1.5 focus:outline-none focus:border-[var(--accent)] cursor-pointer"
-            >
-              <option>All Categories</option>
-              <option>Core Data Structures</option>
-              <option>Algorithms & DP</option>
-              <option>Applied Systems</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
+        {/* Action Button: Full-page deep dive */}
+        {onOpenDetail && (
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onOpenDetail) onOpenDetail();
-            }}
-            title="Open Full Analytics View"
-            aria-label="Open Full Analytics View"
-            className="p-1.5 rounded-xl bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-accent)] text-[var(--text-muted)] group-hover:text-[var(--accent)] hover:text-[var(--accent)] transition-all cursor-pointer"
+            onClick={onOpenDetail}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--bg-surface-elevated)] hover:bg-[var(--active-nav-bg)] text-[var(--text-secondary)] hover:text-[var(--accent)] border border-[var(--border-subtle)] hover:border-[var(--border-accent)] transition-all cursor-pointer shadow-xs self-start sm:self-auto"
           >
             <Maximize2 className="w-3.5 h-3.5" />
+            <span>Deep-Dive Analytics</span>
           </button>
-        </div>
+        )}
       </div>
 
-      {/* Main Content Area */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-        {/* Radar Chart (Left / Center) */}
-        <div className="md:col-span-7 flex flex-col items-center justify-center relative">
-          <div className="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center">
-            <svg
-              className="w-full h-full overflow-visible"
-              viewBox="0 0 300 300"
-            >
-              <defs>
-                {/* Dynamic radial gradient using active theme accent */}
-                <radialGradient id="radarGlowDynamic" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
-                  <stop offset="60%" stopColor={accent} stopOpacity="0.08" />
-                  <stop offset="100%" stopColor={accent} stopOpacity="0" />
-                </radialGradient>
+      {/* 2. Main Radar Chart Card Container */}
+      <div className="relative flex flex-col items-center justify-center min-h-[380px] sm:min-h-[440px] rounded-2xl bg-[#070B14] border border-white/5 p-2 sm:p-4 overflow-hidden">
+        {/* Subtle Ambient Tech Glow */}
+        <div
+          className="absolute -top-24 -left-24 w-72 h-72 rounded-full blur-3xl pointer-events-none opacity-20 transition-all duration-500"
+          style={{ backgroundColor: accent }}
+        />
+        <div
+          className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full blur-3xl pointer-events-none opacity-15 transition-all duration-500"
+          style={{ backgroundColor: accentSecondary }}
+        />
 
-                <filter id="glowFilterRadar" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-              </defs>
+        {/* SVG Hexagonal Radar Canvas */}
+        <div className="relative w-full max-w-[560px] aspect-[560/440] flex items-center justify-center">
+          <svg
+            className="w-full h-full overflow-visible select-none"
+            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+          >
+            <defs>
+              {/* Radar theme glow filter */}
+              <filter id="radarThemeGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="4.5" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
 
-              {/* Background circular glow */}
-              <circle cx={center} cy={center} r={radius * 1.05} fill="url(#radarGlowDynamic)" />
+              {/* Central radial background glow */}
+              <radialGradient id="radarCenterAura" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor={accent} stopOpacity="0.25" />
+                <stop offset="50%" stopColor={accent} stopOpacity="0.06" />
+                <stop offset="100%" stopColor={accent} stopOpacity="0" />
+              </radialGradient>
 
-              {/* Concentric Hexagonal Grid Lines */}
-              {gridLevels.map((lvl, idx) => {
-                const gridPoints = skills
-                  .map((_, i) => {
-                    const { x, y } = getCoordinates(i, lvl);
-                    return `${x},${y}`;
-                  })
-                  .join(' ');
-                const isOuterRing = idx === gridLevels.length - 1;
-                return (
-                  <polygon
-                    key={idx}
-                    points={gridPoints}
-                    fill="none"
-                    stroke={isOuterRing ? accentSecondary : 'rgba(255, 255, 255, 0.08)'}
-                    strokeOpacity={isOuterRing ? 0.35 : 0.8}
-                    strokeWidth={isOuterRing ? 1.5 : 1}
-                  />
-                );
-              })}
+              {/* Radar Polygon Theme Gradient Fill */}
+              <linearGradient id="radarPolygonFill" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor={accent} stopOpacity="0.45" />
+                <stop offset="50%" stopColor={accent} stopOpacity="0.25" />
+                <stop offset="100%" stopColor={accentSecondary} stopOpacity="0.15" />
+              </linearGradient>
+            </defs>
 
-              {/* Radial Axes */}
-              {skills.map((_, i) => {
-                const { x, y } = getCoordinates(i, 1.0);
-                return (
-                  <line
-                    key={i}
-                    x1={center}
-                    y1={center}
-                    x2={x}
-                    y2={y}
-                    stroke="rgba(255, 255, 255, 0.12)"
-                    strokeWidth="1"
-                    strokeDasharray="2 3"
-                  />
-                );
-              })}
+            {/* Central Glow Disc */}
+            <circle cx={center.x} cy={center.y} r={radius * 1.15} fill="url(#radarCenterAura)" />
 
-              {/* User Data Polygon — dynamic theme primary accent and fill */}
-              <polygon
-                points={dataPoints}
-                fill={accent}
-                fillOpacity="0.22"
-                stroke={accent}
-                strokeWidth="2.5"
-                filter="url(#glowFilterRadar)"
-                className="transition-all duration-300"
+            {/* Concentric Hexagonal Gridlines (20%, 40%, 60%, 80%, 100%) */}
+            {gridLevels.map((lvl, idx) => {
+              const gridPoints = domains
+                .map((_, i) => {
+                  const pt = getCoordinates(i, lvl);
+                  return `${pt.x},${pt.y}`;
+                })
+                .join(' ');
+              const isOuter = idx === gridLevels.length - 1;
+
+              return (
+                <polygon
+                  key={idx}
+                  points={gridPoints}
+                  fill="none"
+                  stroke={isOuter ? `${accent}88` : 'rgba(255, 255, 255, 0.08)'}
+                  strokeWidth={isOuter ? 1.5 : 0.8}
+                  strokeDasharray={isOuter ? undefined : '3 3'}
+                />
+              );
+            })}
+
+            {/* Dashed Radial Lines from Center to each outer vertex */}
+            {outerVertices.map((v, i) => (
+              <line
+                key={`axis-${i}`}
+                x1={center.x}
+                y1={center.y}
+                x2={v.x}
+                y2={v.y}
+                stroke="rgba(255, 255, 255, 0.12)"
+                strokeWidth={1}
+                strokeDasharray="4 4"
               />
+            ))}
 
-              {/* Vertex Nodes and Interactive Hitboxes */}
-              {skills.map((skill, i) => {
-                const { x, y } = getCoordinates(i, skill.proficiency / 100);
-                const isHovered = activeInspectSkill?.id === skill.id;
+            {/* 3. Dynamic Theme Radar Polygon */}
+            <polygon
+              points={userPolygonPoints}
+              fill="url(#radarPolygonFill)"
+              stroke={accent}
+              strokeWidth={2.5}
+              filter="url(#radarThemeGlow)"
+              className="transition-all duration-700 ease-out"
+            />
 
-                return (
-                  <g key={skill.id} className="cursor-pointer">
-                    {/* Pulsing ring on hover */}
-                    {isHovered && (
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r="10"
-                        fill="none"
-                        stroke={accent}
-                        strokeWidth="1.5"
-                        className="animate-ping opacity-75"
-                      />
-                    )}
+            {/* 4. Six Circular Data-point Markers */}
+            {domains.map((domain, i) => {
+              const ratio = domain.hasSufficientData ? domain.proficiency / 100 : 0.12;
+              const pt = getCoordinates(i, ratio);
+              const isHovered = hoveredDomainId === domain.id;
+              const isSelected = selectedDomainId === domain.id;
 
-                    {/* Point vertex */}
+              return (
+                <g
+                  key={`marker-${domain.id}`}
+                  className="cursor-pointer transition-transform duration-200"
+                  onMouseEnter={(e) => {
+                    setHoveredDomainId(domain.id);
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setTooltipPos({ x: rect.left, y: rect.top });
+                  }}
+                  onMouseLeave={() => setHoveredDomainId(null)}
+                  onClick={() => handleVertexClick(domain)}
+                >
+                  {/* Outer pulse aura on hover or selection */}
+                  {(isHovered || isSelected) && (
                     <circle
-                      cx={x}
-                      cy={y}
-                      r={isHovered ? 6 : 4}
-                      fill={isHovered ? '#FFFFFF' : accent}
-                      stroke="var(--bg-main)"
-                      strokeWidth="2"
-                      className="transition-all duration-200"
-                      filter="url(#glowFilterRadar)"
-                      onMouseEnter={() => setHoveredSkill(skill)}
-                      onMouseLeave={() => setHoveredSkill(null)}
-                      onClick={() => {
-                        setSelectedSkill(selectedSkill?.id === skill.id ? null : skill);
-                        if (onSelectCategory) onSelectCategory(skill.shortName);
-                      }}
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={14}
+                      fill={accent}
+                      fillOpacity={0.25}
+                      className="animate-ping"
                     />
-                  </g>
-                );
-              })}
+                  )}
 
-              {/* Axis Labels — dynamic secondary accent on hover */}
-              {skills.map((skill, i) => {
-                const { x, y } = getCoordinates(i, 1.24);
-                const isHovered = activeInspectSkill?.id === skill.id;
+                  {/* Marker glow ring */}
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={isHovered || isSelected ? 8 : 5.5}
+                    fill="#0A0F1D"
+                    stroke={accent}
+                    strokeWidth={isHovered || isSelected ? 2.5 : 2}
+                    filter="url(#radarThemeGlow)"
+                  />
 
-                return (
-                  <g
-                    key={`lbl-${skill.id}`}
-                    className="cursor-pointer select-none"
-                    onMouseEnter={() => setHoveredSkill(skill)}
-                    onMouseLeave={() => setHoveredSkill(null)}
-                    onClick={() => {
-                      setSelectedSkill(selectedSkill?.id === skill.id ? null : skill);
-                      if (onSelectCategory) onSelectCategory(skill.shortName);
-                    }}
+                  {/* Inner theme dot */}
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={isHovered || isSelected ? 3.5 : 2.5}
+                    fill={accent}
+                  />
+                </g>
+              );
+            })}
+
+            {/* 5. Center Information Hub */}
+            <g
+              transform={`translate(${center.x}, ${center.y})`}
+              className="select-none pointer-events-none"
+            >
+              {/* Compact center disc */}
+              <circle
+                r={36}
+                fill="#0A0F1D"
+                stroke={`${accent}88`}
+                strokeWidth={1.5}
+                filter="url(#radarThemeGlow)"
+              />
+              <text
+                textAnchor="middle"
+                dy="-4"
+                className="font-mono font-black text-sm"
+                fill={accent}
+              >
+                {overall.hasAnyData ? `${overall.overallMastery}%` : '—'}
+              </text>
+              <text
+                textAnchor="middle"
+                dy="12"
+                className="text-[9px] font-bold uppercase tracking-wider"
+                fill="rgba(255, 255, 255, 0.7)"
+              >
+                Mastery
+              </text>
+            </g>
+
+            {/* 6. Surrounding Domain Labels (Positioned next to each vertex) */}
+            {domains.map((domain, i) => {
+              const outerPt = outerVertices[i];
+              const isHovered = hoveredDomainId === domain.id;
+              const isSelected = selectedDomainId === domain.id;
+
+              // Compute offset for label placement outside the hexagon
+              const angle = getAngle(i);
+              const labelDistance = 38;
+              const lx = outerPt.x + labelDistance * Math.cos(angle);
+              const ly = outerPt.y + labelDistance * Math.sin(angle);
+
+              // Text anchor: right side anchors start, left side anchors end, center anchors middle
+              let anchor: 'start' | 'middle' | 'end' = 'middle';
+              if (Math.cos(angle) > 0.25) anchor = 'start';
+              else if (Math.cos(angle) < -0.25) anchor = 'end';
+
+              return (
+                <g
+                  key={`label-${domain.id}`}
+                  className="cursor-pointer group/label"
+                  onMouseEnter={() => setHoveredDomainId(domain.id)}
+                  onMouseLeave={() => setHoveredDomainId(null)}
+                  onClick={() => handleVertexClick(domain)}
+                >
+                  {/* Subtle connection line to vertex */}
+                  <line
+                    x1={outerPt.x}
+                    y1={outerPt.y}
+                    x2={lx}
+                    y2={ly}
+                    stroke={isHovered || isSelected ? accent : 'rgba(255, 255, 255, 0.15)'}
+                    strokeWidth={1}
+                  />
+
+                  {/* Domain Name */}
+                  <text
+                    x={lx}
+                    y={ly - 4}
+                    textAnchor={anchor}
+                    className="font-bold text-[11px] sm:text-xs transition-colors"
+                    fill={isHovered || isSelected ? accent : '#FFFFFF'}
                   >
-                    <text
-                      x={x}
-                      y={y - 7}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      className={`text-[11px] font-semibold transition-colors duration-150 ${
-                        isHovered ? 'font-bold' : 'fill-slate-300'
-                      }`}
-                      style={{ fill: isHovered ? accentSecondary : undefined }}
-                    >
-                      {skill.shortName}
-                    </text>
-                    <text
-                      x={x}
-                      y={y + 8}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      className="text-[11px] font-mono font-bold transition-colors duration-150"
-                      style={{ fill: accent }}
-                    >
-                      {skill.proficiency}%
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
+                    {domain.name}
+                  </text>
 
-          <span className="text-[10px] text-[var(--text-muted)] mt-1">
-            Hover or click any vertex to inspect underlying topic metrics
+                  {/* Mastery Percentage & Status */}
+                  <text
+                    x={lx}
+                    y={ly + 11}
+                    textAnchor={anchor}
+                    className="font-mono text-[10px] sm:text-[11px] font-semibold"
+                    fill={domain.hasSufficientData ? accent : 'rgba(148, 163, 184, 0.8)'}
+                  >
+                    {domain.hasSufficientData ? `${domain.proficiency}%` : 'No data'}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Floating Tooltip during vertex hover */}
+        {hoveredDomain && (
+          <div className="absolute top-4 right-4 z-20 hidden md:block">
+            <SkillRadarTooltip domain={hoveredDomain} accentColor={accent} />
+          </div>
+        )}
+      </div>
+
+      {/* 3. Click-based Detailed Domain Breakdown */}
+      {selectedDomain && (
+        <SkillDomainDetails
+          domain={selectedDomain}
+          accentColor={accent}
+          onNavigateToCategory={(catSlug) => {
+            if (onSelectCategory) {
+              onSelectCategory(catSlug);
+            }
+          }}
+          onClose={() => setSelectedDomainId(null)}
+        />
+      )}
+
+      {/* 4. Responsive Six-Domain Quick Selector Cards (Mobile & Desktop) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+          <span className="font-semibold text-[var(--text-primary)]">
+            Explore All 6 AI Competency Axes
+          </span>
+          <span className="text-[11px]">
+            {overall.hasAnyData ? `${overall.totalSolved} solved across ${overall.totalQuestions} questions` : 'Practice questions to unlock analytics'}
           </span>
         </div>
 
-        {/* Right Summary & Category List */}
-        <div className="md:col-span-5 space-y-4">
-          {/* Overall Proficiency Card */}
-          <div className="p-4 rounded-xl bg-[var(--bg-surface-elevated)]/60 border border-[var(--border-subtle)]">
-            <span className="text-xs text-[var(--text-secondary)] font-medium">
-              Overall Proficiency
-            </span>
-            <div className="flex items-baseline gap-2.5 mt-1">
-              <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-                63%
-              </span>
-              <span
-                className="inline-flex items-center gap-0.5 text-xs font-semibold font-mono"
-                style={{ color: accent }}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {domains.map((domain) => {
+            const isSelected = selectedDomainId === domain.id;
+            return (
+              <button
+                key={domain.id}
+                type="button"
+                onClick={() => handleVertexClick(domain)}
+                className={`p-3.5 rounded-xl border text-left flex items-center justify-between gap-3 transition-all cursor-pointer group ${
+                  isSelected
+                    ? 'bg-[var(--active-nav-bg)] border-[var(--accent)] shadow-md'
+                    : 'bg-[var(--bg-surface-elevated)]/40 hover:bg-[var(--bg-surface-elevated)] border-[var(--border-subtle)] hover:border-white/20'
+                }`}
               >
-                <ArrowUp className="w-3.5 h-3.5" />
-                12% vs last month
-              </span>
-            </div>
-          </div>
-
-          {/* Category List */}
-          <div className="space-y-1.5">
-            {skills.map((skill) => {
-              const isSelected = activeInspectSkill?.id === skill.id;
-
-              return (
-                <div
-                  key={skill.id}
-                  onMouseEnter={() => setHoveredSkill(skill)}
-                  onMouseLeave={() => setHoveredSkill(null)}
-                  onClick={() => {
-                    setSelectedSkill(selectedSkill?.id === skill.id ? null : skill);
-                    if (onSelectCategory) onSelectCategory(skill.shortName);
-                  }}
-                  className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border ${
-                    isSelected
-                      ? 'bg-[var(--active-nav-bg)] border-[var(--border-accent)] text-[var(--text-primary)] font-semibold shadow-sm'
-                      : 'hover:bg-[var(--bg-surface-elevated)]/70 border-transparent text-[var(--text-secondary)]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
-                      style={{ backgroundColor: isSelected ? accent : accentSecondary }}
-                    />
-                    <span className="truncate">{skill.shortName}</span>
-                  </div>
-
-                  <span
-                    className="font-mono font-bold tabular-nums"
-                    style={{ color: accent }}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition-colors"
+                    style={{
+                      backgroundColor: 'var(--active-nav-bg)',
+                      borderColor: isSelected ? 'var(--accent)' : 'var(--border-accent)',
+                      color: 'var(--accent)',
+                    }}
                   >
-                    {skill.proficiency}%
+                    {renderIcon(domain.iconName, 'w-4 h-4')}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors truncate">
+                      {domain.name}
+                    </h4>
+                    <p className="text-[10px] text-[var(--text-muted)] truncate">
+                      {domain.categories.map((c) => c.name).join(' • ')}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span
+                    className="text-sm font-mono font-bold block"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    {domain.hasSufficientData ? `${domain.proficiency}%` : '—'}
+                  </span>
+                  <span className="text-[9px] text-[var(--text-muted)] font-medium">
+                    {domain.status}
                   </span>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Detail popover if category is selected/hovered */}
-          {activeInspectSkill && (
-            <div className="p-3.5 rounded-xl bg-[var(--bg-surface-elevated)] border border-[var(--border-accent)] animate-in fade-in duration-150 text-xs space-y-1.5 shadow-lg">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-[var(--text-primary)]">
-                  {activeInspectSkill.name}
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[var(--active-nav-bg)] text-[var(--accent)] border border-[var(--border-accent)]">
-                  {activeInspectSkill.status}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
-                <span>Solved: {activeInspectSkill.solvedCount} / {activeInspectSkill.totalCount} problems</span>
-                <span>Accuracy: {activeInspectSkill.attemptRate}%</span>
-              </div>
-            </div>
-          )}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 };
+

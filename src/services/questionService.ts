@@ -143,6 +143,97 @@ function parseTags(rawTags: any, subcategory?: string | null, categoryName?: str
 }
 
 /**
+ * Resolves the primary question title / heading following the exact fallback specification:
+ * 1. If `heading` contains a valid value, display it.
+ * 2. If `heading` is NULL, empty, or whitespace, use a meaningful fallback derived from question data
+ *    if possible (e.g., first sentence or summary of question_text).
+ * 3. If no meaningful fallback is available, display `Question #<source_question_number>`.
+ * 4. Never display `undefined`, `null`, or an empty title.
+ */
+export function resolveQuestionTitle(row: any, fallbackNumber: number): string {
+  // 1. If `heading` contains a valid value, display it
+  if (row && row.heading && typeof row.heading === 'string') {
+    const cleanHeading = row.heading.trim();
+    if (
+      cleanHeading.length > 0 &&
+      cleanHeading.toLowerCase() !== 'null' &&
+      cleanHeading.toLowerCase() !== 'undefined'
+    ) {
+      return cleanHeading;
+    }
+  }
+
+  // Check alias title fields if valid and not a generic placeholder
+  if (row && row.title && typeof row.title === 'string') {
+    const cleanTitle = row.title.trim();
+    if (
+      cleanTitle.length > 0 &&
+      cleanTitle.toLowerCase() !== 'null' &&
+      cleanTitle.toLowerCase() !== 'undefined' &&
+      !cleanTitle.toLowerCase().startsWith('question #')
+    ) {
+      return cleanTitle;
+    }
+  }
+  if (row && row.question_title && typeof row.question_title === 'string') {
+    const clean = row.question_title.trim();
+    if (clean.length > 0 && clean.toLowerCase() !== 'null' && clean.toLowerCase() !== 'undefined') {
+      return clean;
+    }
+  }
+  if (row && row.name && typeof row.name === 'string') {
+    const clean = row.name.trim();
+    if (clean.length > 0 && clean.toLowerCase() !== 'null' && clean.toLowerCase() !== 'undefined') {
+      return clean;
+    }
+  }
+
+  // 2. Meaningful fallback derived from question data (first sentence or summary of question_text)
+  const fullText = (
+    row?.question_text ||
+    row?.description ||
+    row?.problem_statement ||
+    row?.statement ||
+    row?.prompt ||
+    row?.content ||
+    row?.details ||
+    ''
+  ).trim();
+
+  if (
+    fullText.length > 0 &&
+    fullText.toLowerCase() !== 'null' &&
+    fullText.toLowerCase() !== 'undefined'
+  ) {
+    // Extract first sentence up to 90-100 characters
+    const sentenceMatch = fullText.match(/^([^.?!\n\r]+[.?!]?)/);
+    let candidate = (sentenceMatch ? sentenceMatch[1] : fullText).trim();
+
+    // Strip leading markdown headers (###), bullet markers (-, *, •), or numbers (1., 2.)
+    candidate = candidate.replace(/^#+\s*/, '').replace(/^[-*•\d.]+\s*/, '').trim();
+
+    if (candidate.length > 95) {
+      const truncated = candidate.slice(0, 90);
+      const lastSpace = truncated.lastIndexOf(' ');
+      candidate = (lastSpace > 30 ? truncated.slice(0, lastSpace) : truncated) + '...';
+    }
+
+    if (candidate.length >= 5) {
+      return candidate;
+    }
+  }
+
+  // 3. Fallback to Question #<source_question_number>
+  const srcNumber = row?.source_question_number ?? row?.number ?? row?.id ?? fallbackNumber;
+  if (srcNumber !== undefined && srcNumber !== null && String(srcNumber).trim().length > 0) {
+    return `Question #${String(srcNumber).trim()}`;
+  }
+
+  // 4. Never display undefined, null, or empty string
+  return `Question #${fallbackNumber}`;
+}
+
+/**
  * Converts a raw Supabase `public.questions` database record into the app's `Problem` interface.
  */
 export function mapSupabaseRowToProblem(row: any, index: number): Problem {
@@ -152,21 +243,29 @@ export function mapSupabaseRowToProblem(row: any, index: number): Problem {
     numericId = index + 1;
   }
 
-  const questionNumber = typeof row.number === 'number'
+  // Source question number from database column source_question_number
+  const rawSrcNum = row.source_question_number;
+  const sourceQuestionNumber = typeof rawSrcNum === 'number'
+    ? rawSrcNum
+    : (typeof rawSrcNum === 'string' && !isNaN(parseInt(rawSrcNum, 10))
+      ? parseInt(rawSrcNum, 10)
+      : undefined);
+
+  const questionNumber = sourceQuestionNumber ?? (typeof row.number === 'number'
     ? row.number
-    : (typeof row.question_number === 'number' ? row.question_number : numericId);
+    : (typeof row.question_number === 'number' ? row.question_number : numericId));
 
-  // Question Title
-  const title = (
-    row.title ||
-    row.question_title ||
-    row.name ||
-    row.question ||
-    `Question #${questionNumber}`
-  ).trim();
+  // Resolved Question Title following fallback specification
+  const title = resolveQuestionTitle(row, questionNumber);
 
-  // Question Description / Statement
+  // Raw heading from database if present
+  const heading = row.heading && typeof row.heading === 'string' && row.heading.trim().length > 0
+    ? row.heading.trim()
+    : undefined;
+
+  // Complete Question Description / Statement (prioritizing question_text from public.questions)
   const description = (
+    row.question_text ||
     row.description ||
     row.problem_statement ||
     row.statement ||
@@ -205,6 +304,12 @@ export function mapSupabaseRowToProblem(row: any, index: number): Problem {
   return {
     id: numericId,
     number: questionNumber,
+    sourceQuestionNumber,
+    heading,
+    questionText: row.question_text || description,
+    batchId: row.batch_id,
+    duplicateGroupId: row.duplicate_group_id,
+    duplicateType: row.duplicate_type,
     title,
     difficulty,
     category: categoryName,
@@ -227,12 +332,28 @@ export function mapSupabaseRowToProblem(row: any, index: number): Problem {
 export function getCachedProblems(): { problems: Problem[] | null; source: 'supabase' | 'local_fallback' | null } {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      const raw = window.localStorage.getItem(CACHE_KEY);
-      const source = window.localStorage.getItem(CACHE_SOURCE_KEY) as any;
+      // Try current cache key
+      let raw = window.localStorage.getItem(CACHE_KEY);
+      let source = window.localStorage.getItem(CACHE_SOURCE_KEY) as any;
+
+      // Fallback to legacy cache key if present
+      if (!raw) {
+        raw = window.localStorage.getItem('codenexus-problems');
+        source = (window.localStorage.getItem('codenexus-problems-source') as any) || source;
+      }
+
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return { problems: parsed, source: source || 'local_fallback' };
+          // Re-validate and upgrade titles if any had stale generic Question # titles
+          const upgraded: Problem[] = parsed.map((p: any, idx: number) => {
+            if (!p.title || p.title.toLowerCase().startsWith('question #')) {
+              const freshTitle = resolveQuestionTitle(p, p.number || idx + 1);
+              return { ...p, title: freshTitle };
+            }
+            return p;
+          });
+          return { problems: upgraded, source: source || 'local_fallback' };
         }
       }
     }
@@ -248,7 +369,9 @@ export function getCachedProblems(): { problems: Problem[] | null; source: 'supa
 export function setCachedProblems(problems: Problem[], source: 'supabase' | 'local_fallback'): void {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(CACHE_KEY, JSON.stringify(problems));
+      const serialized = JSON.stringify(problems);
+      window.localStorage.setItem(CACHE_KEY, serialized);
+      window.localStorage.setItem('codenexus-problems', serialized);
       window.localStorage.setItem(CACHE_SOURCE_KEY, source);
       window.localStorage.setItem(CACHE_TIMESTAMP_KEY, new Date().toISOString());
     }

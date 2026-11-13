@@ -1,39 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
-  List,
-  TreePine,
-  Network,
-  Code2,
-  Sigma,
-  Database,
-  Layers,
-  Lock,
   ArrowRight,
   CheckCircle2,
-  Clock,
+  Lock,
   Sparkles,
   Zap,
+  Layers,
+  ChevronDown,
+  Info,
+  Check,
+  Compass,
 } from 'lucide-react';
-import { CONSTELLATION_TOPICS } from '../../data/mockData';
-import { ConstellationTopic } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
+import { Problem } from '../../types';
+import {
+  useConstellationData,
+  ConstellationCategoryData,
+} from '../../hooks/useConstellationData';
+import { ConstellationNodeIcon } from './ConstellationNodeIcon';
 import { InsightsDetailHeader } from './InsightsDetailHeader';
 
 interface AlgorithmConstellationDetailProps {
   onBack: () => void;
-  onNavigateToProblems?: (tag?: string) => void;
+  onNavigateToProblems?: (categorySlug?: string) => void;
+  problems?: Problem[];
 }
 
 export const AlgorithmConstellationDetail: React.FC<AlgorithmConstellationDetailProps> = ({
   onBack,
   onNavigateToProblems,
+  problems,
 }) => {
   const { currentTheme } = useTheme();
-  const [selectedTopic, setSelectedTopic] = useState<ConstellationTopic | null>(
-    CONSTELLATION_TOPICS[0]
-  );
-  const [hoveredTopic, setHoveredTopic] = useState<ConstellationTopic | null>(null);
+  const { categories, centralHub, overall, getCategoryById } = useConstellationData(problems);
+
+  // Selected topic in the constellation (starts as null to fulfill Initial Selection rule:
+  // "On initial page load: Show all 11 category nodes. Display muted connections. Do not show an arbitrary highlighted connection. Show a neutral right-side message asking the user to select a category.")
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [hoveredCategoryId, setHoveredCategoryId] = useState<string | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string>('All Categories');
 
   // Keyboard shortcut: Esc to go back
   useEffect(() => {
@@ -44,489 +50,702 @@ export const AlgorithmConstellationDetail: React.FC<AlgorithmConstellationDetail
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack]);
 
-  const accent = currentTheme.tokens.accent;
-  const accentSecondary = currentTheme.tokens.accentSecondary;
-  const accentGlow = currentTheme.tokens.accentGlow;
+  // Active theme accent & glows
+  const accent = currentTheme.tokens.accent || '#F5A623';
+  const accentSecondary = currentTheme.tokens.accentSecondary || '#FFC247';
+  const accentGlow = currentTheme.tokens.accentGlow || 'rgba(245, 166, 35, 0.4)';
 
-  const topics = CONSTELLATION_TOPICS;
-
-  const centerNode = {
-    id: 'algorithms',
-    label: 'Algorithms Core',
-    x: 50,
-    y: 50,
-  };
-
-  const getNodeIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'list':
-        return List;
-      case 'tree':
-        return TreePine;
-      case 'network':
-        return Network;
-      case 'code':
-        return Code2;
-      case 'sigma':
-        return Sigma;
-      case 'database':
-        return Database;
-      case 'layout':
-        return Layers;
-      default:
-        return Box;
+  // Synchronize category dropdown filter with constellation selection
+  const handleFilterChange = (catId: string) => {
+    setFilterCategory(catId);
+    if (catId === 'All Categories') {
+      setSelectedCategoryId(null);
+    } else {
+      setSelectedCategoryId(catId);
     }
   };
 
-  const activeTopic = hoveredTopic || selectedTopic || topics[0];
-
-  const isLineHighlighted = (sourceId: string, targetId: string) => {
-    if (!activeTopic) return false;
-    return (
-      (activeTopic.id === sourceId && targetId === 'algorithms') ||
-      (activeTopic.id === targetId && sourceId === 'algorithms') ||
-      (activeTopic.id === sourceId && activeTopic.connections.includes(targetId)) ||
-      (activeTopic.id === targetId &&
-        topics.find((t) => t.id === sourceId)?.connections.includes(targetId))
-    );
+  const handleSelectNode = (catId: string) => {
+    if (selectedCategoryId === catId) {
+      // Toggle or keep selected
+      setSelectedCategoryId(catId);
+    } else {
+      setSelectedCategoryId(catId);
+      setFilterCategory(catId);
+    }
   };
 
-  const completedCount = topics.filter((t) => t.status === 'completed').length;
-  const inProgressCount = topics.filter((t) => t.status === 'in-progress').length;
-  const notStartedCount = topics.filter((t) => t.status === 'not-started').length;
+  const selectedCategory = selectedCategoryId ? getCategoryById(selectedCategoryId) : null;
+  const hoveredCategory = hoveredCategoryId ? getCategoryById(hoveredCategoryId) : null;
+
+  // Active display category for inspect (hover preview or selected)
+  const activeCategory = hoveredCategory || selectedCategory;
+
+  // Generate deterministic subtle starfield background points
+  const starParticles = useMemo(() => {
+    const stars = [];
+    const count = 48;
+    for (let i = 0; i < count; i++) {
+      const x = (i * 73 + 17) % 800 + 10;
+      const y = (i * 97 + 29) % 660 + 10;
+      const r = (i % 3 === 0 ? 1.4 : i % 2 === 0 ? 1.0 : 0.7);
+      const opacity = ((i % 5) * 0.12 + 0.18).toFixed(2);
+      stars.push({ x, y, r, opacity });
+    }
+    return stars;
+  }, []);
 
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
-      {/* Header with Back Navigation */}
+      {/* 1. Header with Breadcrumb, Title, C icon, and Filter Dropdown */}
       <InsightsDetailHeader
         badge="C"
-        title="Algorithm Constellation Network"
-        subtitle="Visual map of algorithmic knowledge dependencies, mastered clusters, and learning trajectories"
+        title="ALGORITHM CONSTELLATION"
+        subtitle="Explore your journey across topics"
         onBack={onBack}
+        actions={
+          <div className="flex items-center gap-2">
+            <select
+              value={filterCategory}
+              onChange={(e) => handleFilterChange(e.target.value)}
+              className="bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 focus:outline-none focus:border-[var(--accent)] cursor-pointer max-w-[200px] truncate"
+            >
+              <option value="All Categories">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        }
       />
 
-      {/* Top Progression Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>Topics Mastered</span>
-            <CheckCircle2 className="w-4 h-4" style={{ color: accent }} />
-          </div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              {completedCount}
-            </span>
-            <span className="text-xs text-[var(--text-muted)] font-mono">
-              / {topics.length} Nodes
-            </span>
-          </div>
-          <div className="mt-2 w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${(completedCount / topics.length) * 100}%`,
-                backgroundColor: accent,
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>In Progress</span>
-            <Clock className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              {inProgressCount}
-            </span>
-            <span className="text-xs text-[var(--text-muted)] font-mono">
-              Active topics
-            </span>
-          </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            Trees & Graphs currently active
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>Locked / Next Up</span>
-            <Lock className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              {notStartedCount}
-            </span>
-            <span className="text-xs text-[var(--text-muted)] font-mono">
-              Prerequisites required
-            </span>
-          </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            SQL & System Design
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>Constellation Coverage</span>
-            <Sparkles className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              71%
-            </span>
-            <span className="text-xs font-semibold text-emerald-400 font-mono">
-              Optimal path
-            </span>
-          </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            Next recommendation: Binary Search Trees
-          </p>
-        </div>
-      </div>
-
-      {/* Main Large Constellation Canvas & Side Inspector */}
+      {/* 2. Main Two-Column Layout (65% Constellation / 35% Inspection & Nodes List) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Full-bleed Network Canvas (8 cols) */}
-        <div className="lg:col-span-8 relative h-[440px] md:h-[500px] w-full rounded-2xl bg-black/40 border border-white/10 overflow-hidden flex items-center justify-center select-none shadow-2xl">
-          {/* Theme-tinted starfield particles */}
-          <div className="absolute inset-0 opacity-40 pointer-events-none">
-            {[
-              { x: '10%', y: '15%', s: '2px', o: 0.6 },
-              { x: '22%', y: '68%', s: '3px', o: 0.8 },
-              { x: '85%', y: '20%', s: '2px', o: 0.5 },
-              { x: '72%', y: '82%', s: '2.5px', o: 0.7 },
-              { x: '42%', y: '12%', s: '2px', o: 0.9 },
-              { x: '90%', y: '62%', s: '3px', o: 0.4 },
-              { x: '12%', y: '84%', s: '1.5px', o: 0.5 },
-              { x: '35%', y: '45%', s: '2px', o: 0.3 },
-              { x: '65%', y: '40%', s: '2px', o: 0.4 },
-            ].map((star, i) => (
+        {/* Left Section: Interactive Constellation Graph (~65% width) */}
+        <div
+          className="lg:col-span-8 rounded-2xl border p-4 sm:p-6 flex flex-col items-center justify-between relative overflow-hidden select-none transition-all duration-300"
+          style={{
+            backgroundColor: '#070A13',
+            borderColor: `${accent}40`,
+            boxShadow:
+              `0 24px 48px -18px rgba(0,0,0,0.85), inset 0 0 60px ${accent}08`,
+            minHeight: '580px',
+          }}
+        >
+          {/* Top Bar inside Constellation Canvas */}
+          <div className="w-full flex items-center justify-between text-xs mb-1 z-10">
+            <div className="flex items-center gap-2">
               <span
-                key={i}
-                className="absolute rounded-full animate-pulse"
-                style={{
-                  left: star.x,
-                  top: star.y,
-                  width: star.s,
-                  height: star.s,
-                  opacity: star.o,
-                  backgroundColor: i % 2 === 0 ? accent : '#FFFFFF',
-                }}
+                className="w-2 h-2 rounded-full animate-pulse"
+                style={{ backgroundColor: accent }}
               />
-            ))}
+              <span
+                className="font-mono text-[11px] uppercase tracking-wider font-semibold"
+                style={{ color: accent }}
+              >
+                Radial Topology
+              </span>
+              <span className="text-slate-400 text-[11px] hidden sm:inline">
+                • 11 Competency Nodes
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accent }} /> Solved
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full border" style={{ borderColor: accent }} /> Active
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-slate-600" /> Todo
+              </span>
+            </div>
           </div>
 
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <filter id="neonGlowConstellationLarge" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="2" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
+          {/* SVG Constellation Canvas */}
+          <div className="relative w-full aspect-[820/680] flex items-center justify-center my-auto">
+            <svg
+              className="w-full h-full overflow-visible"
+              viewBox="0 0 820 680"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <defs>
+                {/* Glow filter for highlighted central connection */}
+                <filter id="connGlow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="3.5" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
 
-            {/* Hub-to-Node Connection Lines */}
-            {topics.map((t) => {
-              const highlighted = isLineHighlighted(t.id, 'algorithms');
-              const strokeColor =
-                t.status === 'completed'
-                  ? accent
-                  : t.status === 'in-progress'
-                  ? accentSecondary
-                  : 'rgba(255, 255, 255, 0.15)';
+                {/* Glow filter for selected node */}
+                <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
 
-              return (
-                <line
-                  key={`line-hub-${t.id}`}
-                  x1={centerNode.x}
-                  y1={centerNode.y}
-                  x2={t.x}
-                  y2={t.y}
-                  stroke={strokeColor}
-                  strokeWidth={highlighted ? 1.5 : 0.7}
-                  strokeOpacity={highlighted ? 0.95 : 0.4}
-                  strokeDasharray={t.status === 'not-started' ? '1 1.5' : undefined}
-                  filter={highlighted ? 'url(#neonGlowConstellationLarge)' : undefined}
-                  className="transition-all duration-300"
+                {/* Radial glow under Central Hub */}
+                <radialGradient id="centralCoreGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
+                  <stop offset="45%" stopColor={accent} stopOpacity="0.10" />
+                  <stop offset="100%" stopColor={accent} stopOpacity="0" />
+                </radialGradient>
+
+                {/* Concentric guide ring gradient */}
+                <radialGradient id="orbitGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="85%" stopColor={accent} stopOpacity="0.04" />
+                  <stop offset="100%" stopColor={accent} stopOpacity="0" />
+                </radialGradient>
+              </defs>
+
+              {/* Starfield Particles */}
+              {starParticles.map((star, idx) => (
+                <circle
+                  key={`star-${idx}`}
+                  cx={star.x}
+                  cy={star.y}
+                  r={star.r}
+                  fill="#FFFFFF"
+                  opacity={star.opacity}
                 />
-              );
-            })}
+              ))}
 
-            {/* Cross-Topic Interconnection Lines */}
-            <line
-              x1={topics[0].x}
-              y1={topics[0].y}
-              x2={topics[1].x}
-              y2={topics[1].y}
-              stroke={accentSecondary}
-              strokeWidth={isLineHighlighted('arrays', 'trees') ? 1.4 : 0.7}
-              strokeOpacity="0.5"
-            />
-            <line
-              x1={topics[1].x}
-              y1={topics[1].y}
-              x2={topics[2].x}
-              y2={topics[2].y}
-              stroke={accentSecondary}
-              strokeWidth={isLineHighlighted('trees', 'graphs') ? 1.4 : 0.7}
-              strokeOpacity="0.5"
-            />
-            <line
-              x1={topics[3].x}
-              y1={topics[3].y}
-              x2={topics[4].x}
-              y2={topics[4].y}
-              stroke="rgba(255, 255, 255, 0.2)"
-              strokeWidth="0.6"
-              strokeDasharray="1 1"
-            />
-          </svg>
+              {/* Ambient radial glow under central core */}
+              <circle
+                cx={centralHub.x}
+                cy={centralHub.y}
+                r={240}
+                fill="url(#centralCoreGlow)"
+              />
 
-          {/* Central Algorithms Hub */}
-          <div
-            className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer group z-10"
-            style={{ left: `${centerNode.x}%`, top: `${centerNode.y}%` }}
-          >
+              {/* Subtle orbital concentric guides */}
+              <circle
+                cx={centralHub.x}
+                cy={centralHub.y}
+                r={285}
+                fill="none"
+                stroke={`${accent}20`}
+                strokeWidth="1"
+                strokeDasharray="6 6"
+              />
+              <circle
+                cx={centralHub.x}
+                cy={centralHub.y}
+                r={160}
+                fill="none"
+                stroke={`${accent}15`}
+                strokeWidth="1"
+                strokeDasharray="4 4"
+              />
+
+              {/* LAYER 1: Connection Lines from Central Hub to Nodes */}
+              {categories.map((node) => {
+                const isSelected = selectedCategoryId === node.id;
+                const isHovered = hoveredCategoryId === node.id;
+                const isHighlighted = isSelected;
+
+                return (
+                  <line
+                    key={`conn-${node.id}`}
+                    x1={centralHub.x}
+                    y1={centralHub.y}
+                    x2={node.x}
+                    y2={node.y}
+                    stroke={
+                      isHighlighted
+                        ? accentSecondary
+                        : isHovered
+                        ? `${accent}99`
+                        : `${accent}40`
+                    }
+                    strokeWidth={isHighlighted ? 3.5 : isHovered ? 2 : 1.2}
+                    strokeOpacity={isHighlighted ? 1 : isHovered ? 0.75 : 0.35}
+                    filter={isHighlighted ? 'url(#connGlow)' : undefined}
+                    className="transition-all duration-300 ease-out"
+                  />
+                );
+              })}
+
+              {/* LAYER 2: Central AI Interview Competency Core */}
+              <g className="cursor-default select-none">
+                {/* Outer pulsing ring */}
+                <circle
+                  cx={centralHub.x}
+                  cy={centralHub.y}
+                  r={centralHub.radius + 8}
+                  fill="none"
+                  stroke={accent}
+                  strokeWidth="1.5"
+                  strokeOpacity="0.4"
+                  strokeDasharray="4 4"
+                />
+
+                {/* Central Hub Main Circle */}
+                <circle
+                  cx={centralHub.x}
+                  cy={centralHub.y}
+                  r={centralHub.radius}
+                  fill="rgba(10, 15, 29, 0.95)"
+                  stroke={accent}
+                  strokeWidth="2.5"
+                  filter="url(#nodeGlow)"
+                  className="shadow-2xl"
+                />
+
+                {/* Inner decorative ring */}
+                <circle
+                  cx={centralHub.x}
+                  cy={centralHub.y}
+                  r={centralHub.radius - 8}
+                  fill={`${accent}15`}
+                  stroke={`${accent}50`}
+                  strokeWidth="1"
+                />
+
+                {/* Isometric 3D Geometric Cube AI Symbol inside Central Hub */}
+                <g transform={`translate(${centralHub.x - 18}, ${centralHub.y - 25})`}>
+                  {/* Top face */}
+                  <polygon
+                    points="18,3 32,10 18,17 4,10"
+                    fill={accentSecondary}
+                    opacity="0.95"
+                  />
+                  {/* Left face */}
+                  <polygon
+                    points="4,10 18,17 18,31 4,24"
+                    fill={accent}
+                    opacity="0.8"
+                  />
+                  {/* Right face */}
+                  <polygon
+                    points="18,17 32,10 32,24 18,31"
+                    fill={currentTheme.tokens.accentHover || accent}
+                    opacity="0.9"
+                  />
+                  {/* Glowing center spark */}
+                  <circle cx="18" cy="17" r="2.5" fill="#FFFFFF" />
+                </g>
+
+                {/* White Title inside/below Hub */}
+                <text
+                  x={centralHub.x}
+                  y={centralHub.y + 16}
+                  textAnchor="middle"
+                  className="text-[10px] font-bold fill-white tracking-wider font-mono select-none"
+                >
+                  AI COMPETENCY
+                </text>
+                <text
+                  x={centralHub.x}
+                  y={centralHub.y + 27}
+                  textAnchor="middle"
+                  className="text-[8.5px] font-extrabold tracking-widest font-mono select-none"
+                  fill={accent}
+                >
+                  CORE
+                </text>
+              </g>
+
+              {/* LAYER 3: Category Nodes & Labels */}
+              {categories.map((node) => {
+                const isSelected = selectedCategoryId === node.id;
+                const isHovered = hoveredCategoryId === node.id;
+                const isCompleted = node.status === 'completed';
+                const isInProgress = node.status === 'in-progress';
+
+                // Node radius
+                const nodeRadius = 24;
+
+                return (
+                  <g
+                    key={`node-grp-${node.id}`}
+                    className="cursor-pointer group"
+                    onMouseEnter={() => setHoveredCategoryId(node.id)}
+                    onMouseLeave={() => setHoveredCategoryId(null)}
+                    onClick={() => handleSelectNode(node.id)}
+                  >
+                    {/* Generous touch/hover target */}
+                    <circle
+                      cx={node.x}
+                      cy={node.y}
+                      r={nodeRadius + 14}
+                      fill="transparent"
+                    />
+
+                    {/* Outer selected glow ring */}
+                    {isSelected && (
+                      <circle
+                        cx={node.x}
+                        cy={node.y}
+                        r={nodeRadius + 7}
+                        fill="none"
+                        stroke={accentSecondary}
+                        strokeWidth="2.5"
+                        strokeOpacity="0.8"
+                        filter="url(#nodeGlow)"
+                        className="animate-pulse"
+                      />
+                    )}
+
+                    {/* Node Circle Background */}
+                    <circle
+                      cx={node.x}
+                      cy={node.y}
+                      r={nodeRadius}
+                      fill={
+                        isCompleted
+                          ? `${accent}33`
+                          : isInProgress
+                          ? 'rgba(15, 23, 42, 0.95)'
+                          : 'rgba(15, 23, 42, 0.85)'
+                      }
+                      stroke={
+                        isSelected
+                          ? accentSecondary
+                          : isCompleted
+                          ? accent
+                          : isInProgress
+                          ? `${accent}99`
+                          : 'rgba(100, 116, 139, 0.45)'
+                      }
+                      strokeWidth={isSelected ? 3 : isCompleted ? 2.5 : 1.5}
+                      filter={isSelected ? 'url(#nodeGlow)' : undefined}
+                      className="transition-all duration-200"
+                    />
+
+                    {/* Icon ForeignObject centered inside node */}
+                    <foreignObject
+                      x={node.x - 11}
+                      y={node.y - 11}
+                      width={22}
+                      height={22}
+                      className="pointer-events-none select-none overflow-visible"
+                    >
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ConstellationNodeIcon
+                          name={node.iconName}
+                          className="w-5 h-5 transition-transform duration-200"
+                          style={{
+                            color: isSelected
+                              ? '#FFFFFF'
+                              : isCompleted
+                              ? accentSecondary
+                              : isInProgress
+                              ? accent
+                              : '#94A3B8',
+                          }}
+                        />
+                      </div>
+                    </foreignObject>
+
+                    {/* Small Checkmark Badge for Completed status */}
+                    {isCompleted && (
+                      <g transform={`translate(${node.x + 10}, ${node.y - 18})`}>
+                        <circle cx="8" cy="8" r="8" fill={accent} />
+                        <path
+                          d="M5 8.5L7 10.5L11 6"
+                          fill="none"
+                          stroke="#070A13"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </g>
+                    )}
+
+                    {/* Category Name Label with dark pill background */}
+                    <g transform={`translate(${node.x}, ${node.y + nodeRadius + 14})`}>
+                      <rect
+                        x="-65"
+                        y="-10"
+                        width="130"
+                        height="20"
+                        rx="10"
+                        fill="rgba(10, 15, 29, 0.88)"
+                        stroke={
+                          isSelected
+                            ? accentSecondary
+                            : isHovered
+                            ? `${accent}88`
+                            : 'rgba(255, 255, 255, 0.12)'
+                        }
+                        strokeWidth={isSelected ? 1.5 : 1}
+                        className="transition-all duration-150"
+                      />
+                      <text
+                        x="0"
+                        y="3"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        className={`text-[9.5px] font-sans transition-colors duration-150 ${
+                          isSelected
+                            ? 'font-extrabold fill-white'
+                            : isHovered
+                            ? 'font-bold'
+                            : 'font-medium fill-slate-300'
+                        }`}
+                        fill={isHovered ? accentSecondary : undefined}
+                      >
+                        {node.shortName}
+                      </text>
+                    </g>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          {/* Bottom helper prompt */}
+          <div className="w-full flex items-center justify-between pt-3 border-t border-white/5 text-[11px] text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <Compass className="w-3.5 h-3.5" style={{ color: 'var(--accent)' }} />
+              Click any category node or list item to inspect topic details
+            </span>
+            <span className="font-mono text-right font-semibold" style={{ color: 'var(--accent)' }}>
+              {overall.totalSolved} / {overall.totalQuestions} Solved ({overall.overallCompletion}%)
+            </span>
+          </div>
+        </div>
+
+        {/* Right Section: Topic Inspection & All Constellation Nodes (~35% width) */}
+        <div className="lg:col-span-4 space-y-4 flex flex-col justify-between">
+          {/* Top Panel: Selected Topic Inspection Card */}
+          {activeCategory ? (
             <div
-              className="w-16 h-16 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 shadow-2xl"
+              className="p-5 rounded-2xl border relative space-y-4 backdrop-blur-md transition-all duration-300 shadow-xl"
               style={{
-                backgroundColor: 'var(--active-nav-bg)',
-                border: `2px solid ${accent}`,
-                color: accent,
-                boxShadow: `0 0 28px ${accentGlow}`,
+                backgroundColor: 'rgba(10, 15, 29, 0.95)',
+                borderColor: `${accent}40`,
+                boxShadow:
+                  `0 16px 36px -12px rgba(0,0,0,0.7), 0 0 20px ${accent}20`,
               }}
             >
-              <Box className="w-8 h-8 animate-pulse" />
-            </div>
-            <span className="text-xs font-bold text-[var(--text-primary)] mt-1.5 drop-shadow-md">
-              Algorithms Core
-            </span>
-          </div>
-
-          {/* Topic Nodes */}
-          {topics.map((t) => {
-            const Icon = getNodeIcon(t.iconName);
-            const isCompleted = t.status === 'completed';
-            const isInProgress = t.status === 'in-progress';
-            const isSelected = activeTopic.id === t.id;
-
-            let nodeStyle: React.CSSProperties = {};
-            if (isCompleted) {
-              nodeStyle = {
-                backgroundColor: 'var(--active-nav-bg)',
-                borderColor: accent,
-                color: accent,
-                boxShadow: `0 0 18px ${accentGlow}`,
-              };
-            } else if (isInProgress) {
-              nodeStyle = {
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                borderColor: accentSecondary,
-                color: accentSecondary,
-                boxShadow: `0 0 14px ${accentGlow}`,
-              };
-            } else {
-              nodeStyle = {
-                backgroundColor: 'rgba(30, 41, 59, 0.7)',
-                borderColor: 'rgba(100, 116, 139, 0.4)',
-                color: 'rgba(148, 163, 184, 0.8)',
-              };
-            }
-
-            return (
-              <div
-                key={t.id}
-                onMouseEnter={() => setHoveredTopic(t)}
-                onMouseLeave={() => setHoveredTopic(null)}
-                onClick={() => setSelectedTopic(t)}
-                className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer transition-all duration-200 z-10 ${
-                  isSelected ? 'scale-125' : 'hover:scale-110'
-                }`}
-                style={{ left: `${t.x}%`, top: `${t.y}%` }}
-              >
-                <div
-                  className="w-11 h-11 rounded-full border-2 flex items-center justify-center relative transition-all shadow-md"
-                  style={nodeStyle}
-                >
-                  <Icon className="w-5 h-5" />
-                  {t.status === 'not-started' && (
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-slate-400">
-                      <Lock className="w-2.5 h-2.5" />
-                    </span>
-                  )}
-                  {t.status === 'completed' && (
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 pb-3 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-colors"
+                    style={{
+                      backgroundColor: `${accent}18`,
+                      borderColor: `${accent}40`,
+                      color: accent,
+                    }}
+                  >
+                    <ConstellationNodeIcon
+                      name={activeCategory.iconName}
+                      className="w-5 h-5"
+                      style={{ color: accent }}
+                    />
+                  </div>
+                  <div>
                     <span
-                      className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[var(--bg-main)] font-extrabold text-[8px]"
-                      style={{ backgroundColor: accent }}
+                      className="text-[10px] font-bold uppercase tracking-wider font-mono block"
+                      style={{ color: accent }}
                     >
-                      ✓
+                      INSPECTING TOPIC NODE
                     </span>
-                  )}
+                    <h3 className="text-base font-bold text-white mt-0.5 leading-snug">
+                      {activeCategory.name}
+                    </h3>
+                  </div>
                 </div>
+
                 <span
-                  className={`text-[11px] font-semibold mt-1.5 px-2 py-0.5 rounded transition-colors whitespace-nowrap shadow-sm ${
-                    isSelected
-                      ? 'text-white bg-slate-900/90 ring-1 ring-[var(--border-accent)] font-bold'
-                      : 'text-slate-200 bg-black/60 backdrop-blur-xs'
+                  className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 uppercase tracking-wider ${
+                    activeCategory.status === 'completed'
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                      : activeCategory.status === 'in-progress'
+                      ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                      : 'border-slate-500/40 bg-slate-500/10 text-slate-400'
                   }`}
                 >
-                  {t.label}
+                  {activeCategory.status === 'completed'
+                    ? 'COMPLETED'
+                    : activeCategory.status === 'in-progress'
+                    ? 'IN PROGRESS'
+                    : 'NOT STARTED'}
                 </span>
               </div>
-            );
-          })}
-        </div>
 
-        {/* Selected Node Inspector (4 cols) */}
-        <div className="lg:col-span-4 space-y-4 flex flex-col justify-between">
-          <div className="p-5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-accent)] shadow-xl space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent)] font-mono">
-                  Inspecting Topic Node
-                </span>
-                <h3 className="text-xl font-bold text-[var(--text-primary)] mt-0.5">
-                  {activeTopic.label}
-                </h3>
-                <span className="text-xs text-[var(--text-muted)]">
-                  {activeTopic.category}
-                </span>
+              {/* Description */}
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {activeCategory.description}
+              </p>
+
+              {/* Problems Solved Progress Box */}
+              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-white/10 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-medium">Problems Solved</span>
+                  <span className="font-mono font-bold text-white">
+                    {activeCategory.solvedCount} / {activeCategory.totalCount}
+                  </span>
+                </div>
+
+                <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${activeCategory.completionRate}%`,
+                      backgroundColor: accent,
+                      boxShadow: `0 0 10px ${accent}80`,
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+                  <span>Completion Rate</span>
+                  <span className="font-mono font-semibold" style={{ color: accent }}>
+                    {activeCategory.completionRate}%
+                  </span>
+                </div>
               </div>
-              <span
-                className="text-xs px-2.5 py-1 rounded-full font-bold uppercase border"
+
+              {/* Key Concepts Covered */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block font-mono">
+                  Key Concepts Covered
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeCategory.keyConcepts.map((concept, idx) => (
+                    <span
+                      key={`concept-${idx}`}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800/80 border border-white/10 text-slate-200"
+                    >
+                      {concept}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Practice Button */}
+              {onNavigateToProblems && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateToProblems(activeCategory.id)}
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg group hover:opacity-95"
+                  style={{
+                    backgroundColor: accent,
+                    color: '#000000',
+                    boxShadow: `0 4px 14px ${accent}50`,
+                  }}
+                >
+                  <span>Practice {activeCategory.shortName} Problems</span>
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </button>
+              )}
+            </div>
+          ) : (
+            /* Initial Neutral State (when no node is selected yet) */
+            <div
+              className="p-6 rounded-2xl border relative flex flex-col items-center justify-center text-center space-y-3 backdrop-blur-md py-12 transition-all duration-300"
+              style={{
+                backgroundColor: 'rgba(10, 15, 29, 0.95)',
+                borderColor: `${accent}35`,
+              }}
+            >
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center border"
                 style={{
-                  backgroundColor:
-                    activeTopic.status === 'completed'
-                      ? 'var(--active-nav-bg)'
-                      : 'rgba(255, 255, 255, 0.08)',
-                  borderColor:
-                    activeTopic.status === 'completed'
-                      ? 'var(--border-accent)'
-                      : 'rgba(255, 255, 255, 0.1)',
-                  color:
-                    activeTopic.status === 'completed'
-                      ? accent
-                      : activeTopic.status === 'in-progress'
-                      ? accentSecondary
-                      : 'var(--text-muted)',
+                  backgroundColor: `${accent}18`,
+                  borderColor: `${accent}40`,
+                  color: accent,
                 }}
               >
-                {activeTopic.status.replace('-', ' ')}
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div className="space-y-1 max-w-xs">
+                <h3 className="text-sm font-bold text-white">
+                  Select a Topic Node
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Click any of the 11 constellation nodes or the list below to inspect topic mastery, concepts, and practice questions.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSelectNode(categories[0].id)}
+                className="mt-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 transition-all cursor-pointer border"
+                style={{
+                  color: accent,
+                  borderColor: `${accent}40`,
+                }}
+              >
+                Inspect {categories[0].name}
+              </button>
+            </div>
+          )}
+
+          {/* Bottom Panel: ALL CONSTELLATION NODES List */}
+          <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-2 flex-1 flex flex-col">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] font-mono">
+                ALL CONSTELLATION NODES
+              </span>
+              <span className="text-[11px] text-[var(--text-muted)] font-mono">
+                11 Categories
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-[var(--text-muted)]">Problems Solved:</span>
-                <span className="font-bold text-[var(--text-primary)]">
-                  {activeTopic.solvedCount} / {activeTopic.totalCount}
-                </span>
-              </div>
-              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.round((activeTopic.solvedCount / activeTopic.totalCount) * 100)}%`,
-                    backgroundColor: accent,
-                  }}
-                />
-              </div>
-            </div>
+            <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar pr-1 flex-1">
+              {categories.map((cat) => {
+                const isSelected = selectedCategoryId === cat.id;
+                const isCompleted = cat.status === 'completed';
+                const isInProgress = cat.status === 'in-progress';
 
-            <div className="space-y-1.5 text-xs">
-              <span className="text-[var(--text-muted)] font-medium block">Key Concepts Covered:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {activeTopic.id === 'arrays' && (
-                  <>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Two Pointers</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Sliding Window</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Prefix Sums</span>
-                  </>
-                )}
-                {activeTopic.id === 'trees' && (
-                  <>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">BST Validation</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">LCA</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Trie Operations</span>
-                  </>
-                )}
-                {activeTopic.id === 'graphs' && (
-                  <>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">BFS / DFS</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Topological Sort</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Dijkstra</span>
-                  </>
-                )}
-                {activeTopic.id === 'dp' && (
-                  <>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Knapsack</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Memoization</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Tabulation</span>
-                  </>
-                )}
-                {activeTopic.id === 'math' && (
-                  <>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Combinatorics</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Modular Arithmetic</span>
-                  </>
-                )}
-                {(activeTopic.id === 'sql' || activeTopic.id === 'system-design') && (
-                  <>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Schema Design</span>
-                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5">Indexing & Scaling</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {onNavigateToProblems && (
-              <button
-                type="button"
-                onClick={() => onNavigateToProblems(activeTopic.label)}
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-[var(--accent)] text-[var(--bg-main)] hover:bg-[var(--accent-hover)] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md group"
-              >
-                <span>Practice {activeTopic.label} Problems</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </button>
-            )}
-          </div>
-
-          {/* Node Legend & Status List */}
-          <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-2 flex-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] block mb-1">
-              All Constellation Nodes
-            </span>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-              {topics.map((t) => {
-                const isSelected = activeTopic.id === t.id;
                 return (
                   <div
-                    key={t.id}
-                    onClick={() => setSelectedTopic(t)}
-                    className={`flex items-center justify-between p-2 rounded-xl text-xs transition-all cursor-pointer border ${
+                    key={`row-${cat.id}`}
+                    onClick={() => handleSelectNode(cat.id)}
+                    className={`flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
                       isSelected
-                        ? 'bg-[var(--active-nav-bg)] border-[var(--border-accent)] text-[var(--text-primary)] font-semibold'
+                        ? 'border text-white font-semibold shadow-sm'
                         : 'hover:bg-[var(--bg-surface-elevated)] border-transparent text-[var(--text-secondary)]'
                     }`}
+                    style={
+                      isSelected
+                        ? {
+                            backgroundColor: 'var(--active-nav-bg)',
+                            borderColor: 'var(--border-accent)',
+                            boxShadow: `0 0 12px ${accent}25`,
+                          }
+                        : undefined
+                    }
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {/* Status Indicator */}
                       <span
-                        className="w-2.5 h-2.5 rounded-full"
+                        className="w-2.5 h-2.5 rounded-full shrink-0 flex items-center justify-center"
                         style={{
-                          backgroundColor:
-                            t.status === 'completed'
-                              ? accent
-                              : t.status === 'in-progress'
-                              ? accentSecondary
-                              : '#64748B',
+                          backgroundColor: isCompleted
+                            ? accent
+                            : isInProgress
+                            ? accentSecondary
+                            : '#64748B',
+                          boxShadow: isCompleted || isInProgress ? `0 0 6px ${accent}` : undefined,
                         }}
                       />
-                      <span>{t.label}</span>
+                      <span className="truncate">{cat.name}</span>
                     </div>
-                    <span className="text-[11px] font-mono text-[var(--text-muted)]">
-                      {t.solvedCount}/{t.totalCount}
-                    </span>
+
+                    <div className="flex items-center gap-2.5 shrink-0 font-mono text-[11px]">
+                      <span className="text-slate-400">
+                        {cat.solvedCount} / {cat.totalCount}
+                      </span>
+                      {isSelected && (
+                        <span
+                          className="text-[10px] font-bold"
+                          style={{ color: 'var(--accent)' }}
+                        >
+                          ACTIVE
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -537,3 +756,4 @@ export const AlgorithmConstellationDetail: React.FC<AlgorithmConstellationDetail
     </div>
   );
 };
+

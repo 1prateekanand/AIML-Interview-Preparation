@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Shuffle,
   CheckCircle2,
@@ -15,7 +15,6 @@ import {
   Search,
   Eye,
 } from 'lucide-react';
-import { TARGET_COMPANIES } from '../data/mockData';
 import { Problem, Difficulty, ProblemStatus } from '../types';
 import { CATEGORIES_LIST, AimCategory } from '../data/categories';
 import { CategoryHeroBanner } from './problems/CategoryHeroBanner';
@@ -33,6 +32,41 @@ interface ProblemsProps {
 type SortField = 'number' | 'title' | 'difficulty' | 'successRate';
 type SortDirection = 'asc' | 'desc';
 
+/**
+ * Formats the primary question heading for table presentation.
+ * Adheres strictly to the user requirement:
+ * 1. Shows actual heading stored in the database.
+ * 2. If heading is NULL/empty, uses meaningful question fallback.
+ * 3. If no fallback, shows Question #<source_question_number>.
+ * 4. Never displays undefined, null, or empty string.
+ * Avoids duplicate number prefixes (e.g. "34. 34." or "34. Question #34").
+ */
+export function formatProblemDisplayHeading(problem: Problem): string {
+  const heading = (problem.heading || problem.title || '').trim();
+  if (!heading || heading.toLowerCase() === 'null' || heading.toLowerCase() === 'undefined') {
+    const num = problem.sourceQuestionNumber ?? problem.number ?? problem.id;
+    return `Question #${num}`;
+  }
+
+  // If heading starts with generic "Question #" (e.g. fallback #3)
+  if (/^question\s*#?\d+/i.test(heading)) {
+    return heading;
+  }
+
+  // If heading already has the question number prefix (e.g. "34. ", "34: ", "#34 ")
+  const num = problem.number;
+  if (num && new RegExp(`^#?0*${num}\\s*[:.)-]\\s*`, 'i').test(heading)) {
+    return heading;
+  }
+
+  // If heading already starts with any number followed by delimiter e.g. "128. ..."
+  if (/^\d+\s*[-.:)]\s*/.test(heading)) {
+    return heading;
+  }
+
+  return num ? `${num}. ${heading}` : heading;
+}
+
 export const Problems: React.FC<ProblemsProps> = ({
   problems,
   searchQuery: parentSearchQuery,
@@ -45,7 +79,6 @@ export const Problems: React.FC<ProblemsProps> = ({
   const [localSearchQuery, setLocalSearchQuery] = useState<string>('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All'); // 'All' | 'Unattempted' | 'In Progress' | 'Solved'
-  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
 
@@ -93,13 +126,31 @@ export const Problems: React.FC<ProblemsProps> = ({
       if (selectedCategory && problem.categorySlug !== selectedCategory) {
         return false;
       }
-      // 2. Search
+      // 2. Search (matches title, heading, question description, category, subcategory, tags, and number)
       if (effectiveSearchQuery) {
         const matchesTitle = problem.title.toLowerCase().includes(effectiveSearchQuery);
+        const matchesHeading = problem.heading?.toLowerCase().includes(effectiveSearchQuery) ?? false;
         const matchesCat = problem.category.toLowerCase().includes(effectiveSearchQuery);
-        const matchesNum = problem.number.toString().includes(effectiveSearchQuery);
-        const matchesTags = problem.tags?.some((t) => t.toLowerCase().includes(effectiveSearchQuery));
-        if (!matchesTitle && !matchesCat && !matchesNum && !matchesTags) return false;
+        const matchesSubcat = problem.subcategory?.toLowerCase().includes(effectiveSearchQuery) ?? false;
+        const matchesNum =
+          problem.number.toString().includes(effectiveSearchQuery) ||
+          (problem.sourceQuestionNumber !== undefined &&
+            problem.sourceQuestionNumber.toString().includes(effectiveSearchQuery));
+        const matchesDesc = (problem.description || problem.questionText || '')
+          .toLowerCase()
+          .includes(effectiveSearchQuery);
+        const matchesTags = problem.tags?.some((t) => t.toLowerCase().includes(effectiveSearchQuery)) ?? false;
+        if (
+          !matchesTitle &&
+          !matchesHeading &&
+          !matchesCat &&
+          !matchesSubcat &&
+          !matchesNum &&
+          !matchesDesc &&
+          !matchesTags
+        ) {
+          return false;
+        }
       }
       // 3. Difficulty
       if (selectedDifficulty !== 'All' && problem.difficulty !== selectedDifficulty) {
@@ -111,13 +162,9 @@ export const Problems: React.FC<ProblemsProps> = ({
         if (selectedStatus === 'In Progress' && problem.status !== 'Attempted') return false;
         if (selectedStatus === 'Solved' && problem.status !== 'Solved') return false;
       }
-      // 5. Company
-      if (selectedCompany && !problem.companies?.includes(selectedCompany)) {
-        return false;
-      }
       return true;
     });
-  }, [problems, selectedCategory, effectiveSearchQuery, selectedDifficulty, selectedStatus, selectedCompany]);
+  }, [problems, selectedCategory, effectiveSearchQuery, selectedDifficulty, selectedStatus]);
 
   // Sort filtered problems
   const sortedProblems = useMemo(() => {
@@ -163,14 +210,12 @@ export const Problems: React.FC<ProblemsProps> = ({
   const resetFilters = () => {
     setSelectedDifficulty('All');
     setSelectedStatus('All');
-    setSelectedCompany(null);
     setLocalSearchQuery('');
   };
 
   const hasActiveFilters =
     selectedDifficulty !== 'All' ||
     selectedStatus !== 'All' ||
-    selectedCompany !== null ||
     effectiveSearchQuery.length > 0;
 
   // Pagination parameters
@@ -180,6 +225,40 @@ export const Problems: React.FC<ProblemsProps> = ({
     const start = (currentPage - 1) * itemsPerPage;
     return sortedProblems.slice(start, start + itemsPerPage);
   }, [sortedProblems, currentPage, itemsPerPage]);
+
+  // Pagination scroll container and active page button refs
+  const paginationScrollRef = useRef<HTMLDivElement>(null);
+  const activePageBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Automatically bring the currently active page button into view
+  useEffect(() => {
+    if (activePageBtnRef.current) {
+      activePageBtnRef.current.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+      });
+    }
+  }, [currentPage]);
+
+  // Enable horizontal scrolling with mouse wheel, trackpad, and touch gestures
+  useEffect(() => {
+    const el = paginationScrollRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      // If user scrolls vertically with mouse wheel and horizontal scroll is available
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, [totalPages]);
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-200">
@@ -433,7 +512,7 @@ export const Problems: React.FC<ProblemsProps> = ({
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">
-                            {problem.number}. {problem.title}
+                            {formatProblemDisplayHeading(problem)}
                           </span>
                           {problem.subcategory && (
                             <span className="text-[10px] font-semibold text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-0.5 rounded border border-[var(--border-accent)]">
@@ -525,82 +604,62 @@ export const Problems: React.FC<ProblemsProps> = ({
         </div>
 
         {/* Table Footer: Real Results count & Pagination */}
-        <div className="p-4 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
-          <div>
+        <div className="p-4 border-t border-[var(--border-subtle)] flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[var(--text-muted)] min-w-0 w-full">
+          <div className="shrink-0 font-medium text-[var(--text-secondary)] text-center md:text-left">
             Showing {sortedProblems.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{' '}
             {Math.min(currentPage * itemsPerPage, sortedProblems.length)} of {sortedProblems.length} problems
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 min-w-0 max-w-full justify-center md:justify-end">
             <button
+              type="button"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="p-1.5 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-surface-elevated)] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              aria-label="Previous page"
+              title="Previous page"
+              className="shrink-0 p-1.5 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`w-7 h-7 rounded-lg font-mono text-xs font-semibold cursor-pointer transition-colors ${
-                  currentPage === page
-                    ? 'bg-[var(--accent)] text-[var(--bg-main)]'
-                    : 'border border-[var(--border-subtle)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
+            {/* Horizontally scrollable page numbers */}
+            <div
+              ref={paginationScrollRef}
+              tabIndex={0}
+              role="navigation"
+              aria-label="Pagination pages"
+              className="pagination-scroll flex items-center gap-1 overflow-x-auto overflow-y-hidden flex-nowrap scroll-smooth py-1 px-1 min-w-0 max-w-[220px] xs:max-w-[280px] sm:max-w-[340px] md:max-w-[420px] lg:max-w-[540px] xl:max-w-[680px] select-none"
+            >
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  ref={currentPage === page ? activePageBtnRef : undefined}
+                  type="button"
+                  onClick={() => setCurrentPage(page)}
+                  aria-label={`Page ${page}`}
+                  aria-current={currentPage === page ? 'page' : undefined}
+                  className={`shrink-0 w-7 h-7 min-w-[28px] rounded-lg font-mono text-xs font-semibold cursor-pointer transition-all flex items-center justify-center ${
+                    currentPage === page
+                      ? 'bg-[var(--accent)] text-[var(--bg-main)] font-bold shadow-sm ring-1 ring-[var(--accent)]'
+                      : 'border border-[var(--border-subtle)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-accent)]'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
 
             <button
+              type="button"
               disabled={currentPage === totalPages || totalPages === 0}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="p-1.5 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-surface-elevated)] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              aria-label="Next page"
+              title="Next page"
+              className="shrink-0 p-1.5 rounded-lg border border-[var(--border-subtle)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* 4. Target Companies Section */}
-      <div className="space-y-3.5">
-        <h2 className="text-base font-bold text-[var(--text-primary)]">
-          Target Companies
-        </h2>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          {TARGET_COMPANIES.map((company) => {
-            const isSelected = selectedCompany === company.tag;
-            return (
-              <button
-                key={company.name}
-                type="button"
-                onClick={() => {
-                  setSelectedCompany(isSelected ? null : company.tag);
-                  setCurrentPage(1);
-                }}
-                className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-150 group ${
-                  isSelected
-                    ? 'bg-[var(--active-nav-bg)] border-[var(--accent)] shadow-[0_0_12px_var(--accent-glow)]'
-                    : 'bg-[var(--bg-surface)] border-[var(--border-subtle)] hover:border-[var(--border-accent)] hover:bg-[var(--bg-surface-elevated)]'
-                }`}
-              >
-                <span
-                  className={`text-2xl font-bold font-mono transition-transform group-hover:scale-110 ${
-                    isSelected ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'
-                  }`}
-                >
-                  {company.symbol}
-                </span>
-                <span className="text-xs font-medium text-[var(--text-primary)]">
-                  {company.name}
-                </span>
-              </button>
-            );
-          })}
         </div>
       </div>
     </div>

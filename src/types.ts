@@ -44,6 +44,12 @@ export type ProblemStatus = 'Solved' | 'Attempted' | 'Todo';
 export interface Problem {
   id: number;
   number: number;
+  sourceQuestionNumber?: number;
+  heading?: string;
+  questionText?: string;
+  batchId?: string;
+  duplicateGroupId?: string;
+  duplicateType?: string;
   title: string;
   difficulty: Difficulty;
   category: string;
@@ -94,6 +100,7 @@ export interface CollectionList {
 export interface ColorTheme {
   id: string;
   name: string;
+  heroImage: string;
   // Swatches for the preview in popover
   swatches: {
     background: string;
@@ -118,5 +125,7 @@ export interface ColorTheme {
     textMuted: string;
     activeNavBg: string;
     activeNavBorder: string;
+    themeNavText?: string;
+    themeNavTextMuted?: string;
   };
 }

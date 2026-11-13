@@ -211,7 +211,7 @@ export const Favorites: React.FC = () => {
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">
-                      {item.number}. {item.title}
+                      {item.title.startsWith(`${item.number}.`) || item.title.startsWith('Question #') ? item.title : `${item.number}. ${item.title}`}
                     </h3>
                     <p className="text-xs text-[var(--text-muted)] truncate">
                       {item.statusText}
@@ -317,7 +317,7 @@ export const Favorites: React.FC = () => {
                         </span>
                       </div>
                       <h4 className="text-xs font-bold text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors truncate">
-                        {item.number}. {item.title}
+                        {item.title.startsWith(`${item.number}.`) || item.title.startsWith('Question #') ? item.title : `${item.number}. ${item.title}`}
                       </h4>
                       <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5 truncate">
                         {item.tags}

@@ -7,18 +7,20 @@ import { SkillRadarDetail } from './insights/SkillRadarDetail';
 import { ProgressRingsDetail } from './insights/ProgressRingsDetail';
 import { AlgorithmConstellationDetail } from './insights/AlgorithmConstellationDetail';
 import { MasteryGridDetail } from './insights/MasteryGridDetail';
-import { InsightViewId } from '../types';
+import { InsightViewId, Problem } from '../types';
 
 interface InsightsProps {
   activeView?: InsightViewId | null;
   onViewChange?: (view: InsightViewId | null) => void;
   onNavigateToProblems?: (tag?: string) => void;
+  problems?: Problem[];
 }
 
 export const Insights: React.FC<InsightsProps> = ({
   activeView: controlledActiveView,
   onViewChange,
   onNavigateToProblems,
+  problems,
 }) => {
   const [internalView, setInternalView] = useState<InsightViewId | null>(null);
   const [timeRange, setTimeRange] = useState<'30d' | '90d' | 'all'>('90d');
@@ -40,6 +42,7 @@ export const Insights: React.FC<InsightsProps> = ({
       <SkillRadarDetail
         onBack={() => handleSelectView(null)}
         onNavigateToProblems={onNavigateToProblems}
+        problems={problems}
       />
     );
   }
@@ -50,6 +53,7 @@ export const Insights: React.FC<InsightsProps> = ({
       <ProgressRingsDetail
         onBack={() => handleSelectView(null)}
         onNavigateToProblems={onNavigateToProblems}
+        problems={problems}
       />
     );
   }
@@ -60,6 +64,7 @@ export const Insights: React.FC<InsightsProps> = ({
       <AlgorithmConstellationDetail
         onBack={() => handleSelectView(null)}
         onNavigateToProblems={onNavigateToProblems}
+        problems={problems}
       />
     );
   }
@@ -69,7 +74,8 @@ export const Insights: React.FC<InsightsProps> = ({
     return (
       <MasteryGridDetail
         onBack={() => handleSelectView(null)}
-        onNavigateToProblems={() => onNavigateToProblems?.()}
+        onNavigateToProblems={onNavigateToProblems}
+        problems={problems}
       />
     );
   }
@@ -135,6 +141,7 @@ export const Insights: React.FC<InsightsProps> = ({
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
         {/* Visualization A — Skill Radar */}
         <SkillRadar
+          problems={problems}
           onOpenDetail={() => handleSelectView('skill-radar')}
           onSelectCategory={(cat) => {
             if (onNavigateToProblems) onNavigateToProblems(cat);
@@ -143,11 +150,13 @@ export const Insights: React.FC<InsightsProps> = ({
 
         {/* Visualization B — Progress Rings */}
         <ProgressRings
+          problems={problems}
           onOpenDetail={() => handleSelectView('progress-rings')}
         />
 
         {/* Visualization C — Algorithm Constellation */}
         <AlgorithmConstellation
+          problems={problems}
           onOpenDetail={() => handleSelectView('algorithm-constellation')}
           onNavigateToProblems={(tag) => {
             if (onNavigateToProblems) onNavigateToProblems(tag);
@@ -156,7 +165,9 @@ export const Insights: React.FC<InsightsProps> = ({
 
         {/* Visualization D — Mastery Grid */}
         <MasteryGrid
+          problems={problems}
           onOpenDetail={() => handleSelectView('mastery-grid')}
+          onNavigateToProblems={onNavigateToProblems}
         />
       </div>
     </div>

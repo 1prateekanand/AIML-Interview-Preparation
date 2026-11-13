@@ -50,10 +50,8 @@ export const ThemeSelector: React.FC = () => {
         aria-label={`Theme selector: current theme is ${currentTheme.name}`}
         aria-expanded={isOpen}
         aria-haspopup="true"
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] cursor-pointer border ${
-          isOpen
-            ? 'bg-[var(--active-nav-bg)] text-[var(--accent)] border-[var(--border-accent)] shadow-sm'
-            : 'bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] border-[var(--border-subtle)] hover:border-[var(--border-accent)]'
+        className={`glow-btn flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 cursor-pointer ${
+          isOpen ? 'glow-btn-active' : ''
         }`}
       >
         {/* 2-color split swatch circular pill */}
@@ -115,13 +113,22 @@ export const ThemeSelector: React.FC = () => {
                   role="menuitem"
                   type="button"
                   onClick={() => handleSelectTheme(theme.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-xs transition-all duration-150 group cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs transition-all duration-150 group cursor-pointer ${
                     isActive
-                      ? 'bg-[var(--active-nav-bg)] border border-[var(--active-nav-border)] text-[var(--text-primary)] font-semibold'
+                      ? 'border font-semibold shadow-xs'
                       : 'hover:bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-transparent'
                   }`}
+                  style={
+                    isActive
+                      ? {
+                          backgroundColor: currentTheme.tokens.activeNavBg,
+                          borderColor: currentTheme.tokens.accent,
+                          color: currentTheme.tokens.textPrimary,
+                        }
+                      : {}
+                  }
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     {/* 2-Color Swatch: Background on left, Accent on right */}
                     <div
                       className="w-4 h-4 rounded-full overflow-hidden shrink-0 flex border border-white/20 shadow-xs"
@@ -143,10 +150,14 @@ export const ThemeSelector: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Active Indicator Checkmark */}
+                  {/* Active Indicator Checkmark matching Image 10 */}
                   {isActive && (
                     <span
-                      className="flex items-center justify-center w-4 h-4 rounded-full bg-[var(--accent)] text-[var(--bg-main)] shrink-0 shadow-xs"
+                      className="flex items-center justify-center w-4 h-4 rounded-full shrink-0 shadow-xs"
+                      style={{
+                        backgroundColor: currentTheme.tokens.accent,
+                        color: '#0B0B0C',
+                      }}
                       aria-label="Active theme"
                     >
                       <Check className="w-2.5 h-2.5 stroke-[3]" />

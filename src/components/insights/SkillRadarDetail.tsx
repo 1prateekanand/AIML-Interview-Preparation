@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowUp,
   ArrowRight,
@@ -8,25 +8,39 @@ import {
   Sparkles,
   BookOpen,
   Filter,
+  Brain,
+  Layers,
+  Bot,
+  Code,
+  ShieldCheck,
+  Rocket,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  AlertCircle,
 } from 'lucide-react';
-import { CATEGORY_SKILLS } from '../../data/mockData';
-import { CategorySkill } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
+import { Problem } from '../../types';
+import { useSkillRadarData, DomainMetric, CategoryMetric } from '../../hooks/useSkillRadarData';
 import { InsightsDetailHeader } from './InsightsDetailHeader';
 
 interface SkillRadarDetailProps {
   onBack: () => void;
   onNavigateToProblems?: (category?: string) => void;
+  problems?: Problem[];
 }
 
 export const SkillRadarDetail: React.FC<SkillRadarDetailProps> = ({
   onBack,
   onNavigateToProblems,
+  problems,
 }) => {
   const { currentTheme } = useTheme();
-  const [filter, setFilter] = useState<string>('All Categories');
-  const [selectedSkill, setSelectedSkill] = useState<CategorySkill | null>(CATEGORY_SKILLS[0]);
-  const [hoveredSkill, setHoveredSkill] = useState<CategorySkill | null>(null);
+  const { domains, overall, insufficientDataNotice } = useSkillRadarData(problems);
+
+  const [filter, setFilter] = useState<string>('All Domains');
+  const [selectedDomainId, setSelectedDomainId] = useState<string>(domains[0]?.id || 'ml-deep-learning');
+  const [hoveredDomainId, setHoveredDomainId] = useState<string | null>(null);
 
   // Keyboard shortcut: Esc to go back
   useEffect(() => {
@@ -37,18 +51,22 @@ export const SkillRadarDetail: React.FC<SkillRadarDetailProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onBack]);
 
-  const accent = currentTheme.tokens.accent;
-  const accentSecondary = currentTheme.tokens.accentSecondary;
-  const accentGlow = currentTheme.tokens.accentGlow;
+  const accent = currentTheme.tokens.accent || '#F59E0B';
+  const accentGlow = currentTheme.tokens.accentGlow || 'rgba(245, 158, 11, 0.4)';
 
-  const skills = CATEGORY_SKILLS;
-  const numAxes = skills.length;
-  const center = 220;
+  // Chart geometry
+  const center = 230;
   const radius = 160;
+  const numAxes = 6;
 
-  const getCoordinates = (index: number, valueRatio: number) => {
-    const angle = (Math.PI * 2 * index) / numAxes - Math.PI / 2;
-    const r = radius * valueRatio;
+  // Axis angle calculation (-120° at index 0 for matching the canonical reference)
+  const getAngle = (index: number) => {
+    return (index * (2 * Math.PI)) / numAxes - (2 * Math.PI) / 3;
+  };
+
+  const getCoordinates = (index: number, valueRatio: number, rOffset = 0) => {
+    const angle = getAngle(index);
+    const r = radius * Math.max(0.08, Math.min(1.0, valueRatio)) + rOffset;
     return {
       x: center + r * Math.cos(angle),
       y: center + r * Math.sin(angle),
@@ -57,21 +75,47 @@ export const SkillRadarDetail: React.FC<SkillRadarDetailProps> = ({
 
   const gridLevels = [0.2, 0.4, 0.6, 0.8, 1.0];
 
-  const dataPoints = skills
-    .map((skill, i) => {
-      const { x, y } = getCoordinates(i, skill.proficiency / 100);
+  const dataPoints = domains
+    .map((d, i) => {
+      const ratio = d.hasSufficientData ? d.proficiency / 100 : 0.12;
+      const { x, y } = getCoordinates(i, ratio);
       return `${x},${y}`;
     })
     .join(' ');
 
-  const activeSkill = hoveredSkill || selectedSkill || skills[0];
+  const activeDomain =
+    domains.find((d) => d.id === (hoveredDomainId || selectedDomainId)) || domains[0];
 
-  const totalSolved = skills.reduce((acc, s) => acc + s.solvedCount, 0);
-  const totalQuestions = skills.reduce((acc, s) => acc + s.totalCount, 0);
-  const averageProficiency = Math.round(
-    skills.reduce((acc, s) => acc + s.proficiency, 0) / skills.length
-  );
-  const masteredCount = skills.filter((s) => s.status === 'Mastered').length;
+  // Filtered domains for listing
+  const filteredDomains = useMemo(() => {
+    if (filter === 'All Domains') return domains;
+    return domains.filter((d) => d.status.toLowerCase() === filter.toLowerCase());
+  }, [domains, filter]);
+
+  // Identify lowest performing or focus area
+  const focusDomain = useMemo(() => {
+    const withActivity = [...domains].sort((a, b) => a.proficiency - b.proficiency);
+    return withActivity[0] || domains[0];
+  }, [domains]);
+
+  const renderDomainIcon = (iconName: string, className = 'w-4 h-4') => {
+    switch (iconName) {
+      case 'Brain':
+        return <Brain className={className} />;
+      case 'Layers':
+        return <Layers className={className} />;
+      case 'Bot':
+        return <Bot className={className} />;
+      case 'Code':
+        return <Code className={className} />;
+      case 'ShieldCheck':
+        return <ShieldCheck className={className} />;
+      case 'Rocket':
+        return <Rocket className={className} />;
+      default:
+        return <Brain className={className} />;
+    }
+  };
 
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
@@ -79,7 +123,7 @@ export const SkillRadarDetail: React.FC<SkillRadarDetailProps> = ({
       <InsightsDetailHeader
         badge="A"
         title="Skill Radar Deep-Dive"
-        subtitle="Comprehensive strength analysis across algorithmic topics and software architecture"
+        subtitle="Live mastery analysis across the 6 core AI Engineering & Machine Learning domains"
         onBack={onBack}
         actions={
           <div className="flex items-center gap-2">
@@ -88,10 +132,11 @@ export const SkillRadarDetail: React.FC<SkillRadarDetailProps> = ({
               onChange={(e) => setFilter(e.target.value)}
               className="bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 focus:outline-none focus:border-[var(--accent)] cursor-pointer"
             >
-              <option>All Categories</option>
-              <option>Data Structures</option>
-              <option>Algorithms</option>
-              <option>System Design</option>
+              <option>All Domains</option>
+              <option value="Mastered">Mastered (&gt;80%)</option>
+              <option value="Proficient">Proficient (60-80%)</option>
+              <option value="Developing">Developing (30-60%)</option>
+              <option value="Needs Practice">Needs Practice (&lt;30%)</option>
             </select>
           </div>
         }
@@ -99,73 +144,83 @@ export const SkillRadarDetail: React.FC<SkillRadarDetailProps> = ({
 
       {/* Top High-Level Metrics Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+        {/* Metric 1: Overall Skill Mastery */}
+        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-[var(--border-accent)] transition-all">
           <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>Overall Proficiency</span>
+            <span>Overall Skill Mastery</span>
             <TrendingUp className="w-4 h-4" style={{ color: accent }} />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              {averageProficiency}%
+              {overall.overallMastery}%
             </span>
             <span
               className="inline-flex items-center gap-0.5 text-xs font-semibold font-mono"
               style={{ color: accent }}
             >
-              <ArrowUp className="w-3.5 h-3.5" /> +12% MoM
+              <ArrowUp className="w-3.5 h-3.5" /> Live
             </span>
           </div>
           <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            Top 18% percentile among interview candidates
+            {overall.hasAnyData
+              ? `Calculated from ${overall.totalAttempted} live problem attempts`
+              : 'Complete practice questions to calibrate your score'}
           </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+        {/* Metric 2: Problems Solved */}
+        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-[var(--border-accent)] transition-all">
           <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
             <span>Problems Solved</span>
-            <Target className="w-4 h-4" style={{ color: accent }} />
+            <Target className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              {totalSolved}
+              {overall.totalSolved}
             </span>
             <span className="text-xs text-[var(--text-muted)] font-mono">
-              / {totalQuestions}
+              / {overall.totalQuestions}
             </span>
           </div>
           <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            {Math.round((totalSolved / totalQuestions) * 100)}% problem completion rate
+            {overall.totalQuestions > 0
+              ? `${Math.round((overall.totalSolved / overall.totalQuestions) * 100)}% overall problem completion`
+              : '0% completed'}
           </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+        {/* Metric 3: Domains Mastered */}
+        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-[var(--border-accent)] transition-all">
           <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
             <span>Domains Mastered</span>
-            <Award className="w-4 h-4 text-amber-400" />
+            <Award className="w-4 h-4" style={{ color: accent }} />
           </div>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono tabular-nums">
-              {masteredCount}
+              {overall.domainsMasteredCount}
             </span>
             <span className="text-xs text-[var(--text-muted)] font-mono">
-              / {skills.length} domains
+              / 6 domains
             </span>
           </div>
           <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            Arrays & Hashing exceeds 85% mastery
+            {overall.domainsMasteredCount > 0
+              ? `${overall.domainsMasteredCount} domains exceed 80% proficiency`
+              : 'Target 80%+ proficiency in each domain'}
           </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+        {/* Metric 4: Primary Focus Area */}
+        <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-[var(--border-accent)] transition-all">
           <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
-            <span>Primary Focus Area</span>
+            <span>Recommended Focus</span>
             <Sparkles className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="mt-2 font-bold text-base text-[var(--text-primary)] truncate">
-            System Design
+            {focusDomain.name}
           </div>
           <p className="text-[11px] text-[var(--text-muted)] mt-1">
-            Current proficiency at 40% (needs practice)
+            Proficiency at {focusDomain.proficiency}% ({focusDomain.status})
           </p>
         </div>
       </div>
@@ -173,40 +228,61 @@ export const SkillRadarDetail: React.FC<SkillRadarDetailProps> = ({
       {/* Main Radar View & Inspector */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Large Interactive Radar SVG Chart (7 cols) */}
-        <div className="lg:col-span-7 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-6 flex flex-col items-center justify-center relative overflow-hidden">
+        <div
+          className="lg:col-span-7 rounded-2xl border p-6 flex flex-col items-center justify-between relative overflow-hidden transition-all duration-300"
+          style={{
+            backgroundColor: '#070A13',
+            borderColor: `${accent}40`,
+            boxShadow: `0 20px 40px -15px rgba(0,0,0,0.8), inset 0 0 40px ${accent}08`,
+          }}
+        >
+          {/* Chart Header Bar */}
           <div className="w-full flex items-center justify-between mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-              Multi-Axis Radar Representation
-            </span>
-            <span className="text-[11px] text-[var(--text-muted)]">
-              Click any node to inspect details
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[10px] font-mono uppercase tracking-widest font-bold px-2 py-0.5 rounded border transition-colors"
+                style={{
+                  color: accent,
+                  backgroundColor: `${accent}15`,
+                  borderColor: `${accent}35`,
+                }}
+              >
+                Hexagonal Radar
+              </span>
+              <span className="text-xs text-slate-300 font-semibold">
+                6-Domain Competency Matrix
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-400">
+              Click node to inspect domain
             </span>
           </div>
 
-          <div className="relative w-full max-w-[440px] aspect-square flex items-center justify-center py-4">
+          {/* SVG Radar */}
+          <div className="relative w-full max-w-[500px] aspect-square flex items-center justify-center py-2">
             <svg
               className="w-full h-full overflow-visible select-none"
-              viewBox="0 0 440 440"
+              viewBox="0 0 460 460"
             >
               <defs>
-                <radialGradient id="radarGlowDynamicLarge" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor={accent} stopOpacity="0.4" />
-                  <stop offset="55%" stopColor={accent} stopOpacity="0.1" />
+                <radialGradient id="radarDetailGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor={accent} stopOpacity="0.32" />
+                  <stop offset="55%" stopColor={accent} stopOpacity="0.08" />
                   <stop offset="100%" stopColor={accent} stopOpacity="0" />
                 </radialGradient>
 
-                <filter id="glowFilterRadarLarge" x="-30%" y="-30%" width="160%" height="160%">
-                  <feGaussianBlur stdDeviation="4" result="blur" />
+                <filter id="glowDetailFilter" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="5" result="blur" />
                   <feComposite in="SourceGraphic" in2="blur" operator="over" />
                 </filter>
               </defs>
 
               {/* Background ambient circular glow */}
-              <circle cx={center} cy={center} r={radius * 1.05} fill="url(#radarGlowDynamicLarge)" />
+              <circle cx={center} cy={center} r={radius * 1.1} fill="url(#radarDetailGlow)" />
 
-              {/* Concentric Polygons */}
+              {/* Concentric Hexagons */}
               {gridLevels.map((lvl, idx) => {
-                const gridPoints = skills
+                const hexPoints = domains
                   .map((_, i) => {
                     const { x, y } = getCoordinates(i, lvl);
                     return `${x},${y}`;
@@ -216,17 +292,18 @@ export const SkillRadarDetail: React.FC<SkillRadarDetailProps> = ({
                 return (
                   <g key={idx}>
                     <polygon
-                      points={gridPoints}
+                      points={hexPoints}
                       fill="none"
-                      stroke={isOuterRing ? accentSecondary : 'rgba(255, 255, 255, 0.08)'}
-                      strokeOpacity={isOuterRing ? 0.45 : 0.8}
+                      stroke={isOuterRing ? accent : 'rgba(255, 255, 255, 0.12)'}
+                      strokeOpacity={isOuterRing ? 0.6 : 0.8}
                       strokeWidth={isOuterRing ? 1.5 : 1}
+                      strokeDasharray={isOuterRing ? undefined : '3 3'}
                     />
-                    {/* Ring percentage label on top axis */}
+                    {/* Ring percentage label */}
                     <text
                       x={center + 6}
                       y={center - radius * lvl + 10}
-                      className="text-[9px] font-mono fill-slate-500"
+                      className="text-[9px] font-mono fill-slate-500 font-medium"
                     >
                       {Math.round(lvl * 100)}%
                     </text>
@@ -234,42 +311,76 @@ export const SkillRadarDetail: React.FC<SkillRadarDetailProps> = ({
                 );
               })}
 
-              {/* Radial Axes */}
-              {skills.map((_, i) => {
+              {/* Radial Axes (dashed lines from center to outer vertices) */}
+              {domains.map((_, i) => {
                 const { x, y } = getCoordinates(i, 1.0);
                 return (
                   <line
-                    key={i}
+                    key={`axis-${i}`}
                     x1={center}
                     y1={center}
                     x2={x}
                     y2={y}
-                    stroke="rgba(255, 255, 255, 0.12)"
+                    stroke="rgba(255, 255, 255, 0.16)"
                     strokeWidth="1"
-                    strokeDasharray="3 3"
+                    strokeDasharray="4 4"
                   />
                 );
               })}
 
-              {/* User Data Polygon with Dynamic Theme Accent */}
+              {/* Dynamic Theme Radar Polygon */}
               <polygon
                 points={dataPoints}
                 fill={accent}
-                fillOpacity="0.25"
+                fillOpacity="0.22"
                 stroke={accent}
-                strokeWidth="3"
-                filter="url(#glowFilterRadarLarge)"
-                className="transition-all duration-300"
+                strokeWidth="2.5"
+                filter="url(#glowDetailFilter)"
+                className="transition-all duration-500 ease-out"
               />
 
-              {/* Vertex Nodes */}
-              {skills.map((skill, i) => {
-                const { x, y } = getCoordinates(i, skill.proficiency / 100);
-                const isSelected = activeSkill.id === skill.id;
+              {/* Center Info Hub */}
+              <g className="cursor-default select-none pointer-events-none">
+                <circle
+                  cx={center}
+                  cy={center}
+                  r="34"
+                  fill="rgba(10, 15, 29, 0.92)"
+                  stroke={accent}
+                  strokeWidth="1.5"
+                  strokeOpacity="0.6"
+                />
+                <text
+                  x={center}
+                  y={center - 7}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="text-[9px] font-mono uppercase font-bold tracking-wider"
+                  fill={accent}
+                >
+                  MASTERY
+                </text>
+                <text
+                  x={center}
+                  y={center + 10}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="text-base font-extrabold font-mono fill-white tabular-nums"
+                >
+                  {overall.overallMastery}%
+                </text>
+              </g>
+
+              {/* Vertex Nodes (circular markers) */}
+              {domains.map((domain, i) => {
+                const ratio = domain.hasSufficientData ? domain.proficiency / 100 : 0.12;
+                const { x, y } = getCoordinates(i, ratio);
+                const isSelected = activeDomain.id === domain.id;
+                const isHovered = hoveredDomainId === domain.id;
 
                 return (
-                  <g key={skill.id} className="cursor-pointer">
-                    {/* Pulsing indicator ring */}
+                  <g key={`vertex-${domain.id}`} className="cursor-pointer">
+                    {/* Animated ping ring on selected node */}
                     {isSelected && (
                       <circle
                         cx={x}
@@ -282,187 +393,293 @@ export const SkillRadarDetail: React.FC<SkillRadarDetailProps> = ({
                       />
                     )}
 
-                    {/* Outer vertex touch target */}
+                    {/* Generous touch target */}
                     <circle
                       cx={x}
                       cy={y}
-                      r="16"
+                      r="18"
                       fill="transparent"
-                      onMouseEnter={() => setHoveredSkill(skill)}
-                      onMouseLeave={() => setHoveredSkill(null)}
-                      onClick={() => setSelectedSkill(skill)}
+                      onMouseEnter={() => setHoveredDomainId(domain.id)}
+                      onMouseLeave={() => setHoveredDomainId(null)}
+                      onClick={() => setSelectedDomainId(domain.id)}
                     />
 
-                    {/* Core vertex */}
+                    {/* Circular marker */}
                     <circle
                       cx={x}
                       cy={y}
-                      r={isSelected ? 7 : 5}
+                      r={isSelected || isHovered ? 7.5 : 5}
                       fill={isSelected ? '#FFFFFF' : accent}
-                      stroke="var(--bg-main)"
+                      stroke="#070A13"
                       strokeWidth="2.5"
-                      filter="url(#glowFilterRadarLarge)"
-                      className="transition-all duration-150"
-                      onMouseEnter={() => setHoveredSkill(skill)}
-                      onMouseLeave={() => setHoveredSkill(null)}
-                      onClick={() => setSelectedSkill(skill)}
+                      filter="url(#glowDetailFilter)"
+                      className="transition-all duration-200"
+                      onMouseEnter={() => setHoveredDomainId(domain.id)}
+                      onMouseLeave={() => setHoveredDomainId(null)}
+                      onClick={() => setSelectedDomainId(domain.id)}
                     />
                   </g>
                 );
               })}
 
-              {/* Axis Labels & Values */}
-              {skills.map((skill, i) => {
-                const { x, y } = getCoordinates(i, 1.25);
-                const isSelected = activeSkill.id === skill.id;
+              {/* Outer Vertex Labels, Icons & Percentages */}
+              {domains.map((domain, i) => {
+                const { x, y } = getCoordinates(i, 1.28);
+                const isSelected = activeDomain.id === domain.id;
 
                 return (
                   <g
-                    key={`lbl-large-${skill.id}`}
-                    className="cursor-pointer select-none"
-                    onMouseEnter={() => setHoveredSkill(skill)}
-                    onMouseLeave={() => setHoveredSkill(null)}
-                    onClick={() => setSelectedSkill(skill)}
+                    key={`lbl-detail-${domain.id}`}
+                    className="cursor-pointer select-none transition-transform duration-200"
+                    onMouseEnter={() => setHoveredDomainId(domain.id)}
+                    onMouseLeave={() => setHoveredDomainId(null)}
+                    onClick={() => setSelectedDomainId(domain.id)}
                   >
+                    {/* Domain Name */}
                     <text
                       x={x}
-                      y={y - 8}
+                      y={y - 9}
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      className={`text-xs transition-colors duration-150 ${
-                        isSelected ? 'font-bold' : 'font-semibold fill-slate-300'
+                      className={`text-[11px] transition-colors duration-150 ${
+                        isSelected ? 'font-bold fill-white' : 'font-medium fill-slate-300'
                       }`}
-                      style={{ fill: isSelected ? accentSecondary : undefined }}
                     >
-                      {skill.shortName}
+                      {domain.shortName}
                     </text>
+                    {/* Proficiency percentage */}
                     <text
                       x={x}
                       y={y + 8}
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      className="text-xs font-mono font-bold"
-                      style={{ fill: isSelected ? '#FFFFFF' : accent }}
+                      className="text-xs font-mono font-extrabold tabular-nums"
+                      fill={domain.hasSufficientData ? accent : '#94A3B8'}
                     >
-                      {skill.proficiency}%
+                      {domain.hasSufficientData ? `${domain.proficiency}%` : '—'}
                     </text>
                   </g>
                 );
               })}
             </svg>
           </div>
+
+          {/* Bottom Footnote */}
+          <div className="w-full flex items-center justify-between pt-2 border-t border-white/5 text-[11px] text-slate-400">
+            <span>Needs Review questions are excluded from calculations</span>
+            <span className="font-mono font-semibold" style={{ color: accent }}>
+              Theme Calibrated
+            </span>
+          </div>
         </div>
 
-        {/* Selected Topic Inspector & Category Breakdown (5 cols) */}
+        {/* Selected Domain Inspector & Breakdown (5 cols) */}
         <div className="lg:col-span-5 space-y-4 flex flex-col justify-between">
-          {/* Active Skill Inspector Card */}
-          <div className="p-5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-accent)] shadow-xl relative space-y-4">
+          {/* Active Domain Inspector Card */}
+          <div
+            className="p-5 rounded-2xl border relative space-y-4 backdrop-blur-md transition-all duration-300"
+            style={{
+              backgroundColor: 'rgba(10, 15, 29, 0.95)',
+              borderColor: `${accent}40`,
+              boxShadow: `0 16px 36px -12px rgba(0,0,0,0.7), 0 0 20px ${accent}20`,
+            }}
+          >
+            {/* Header: Domain Title & Status Badge */}
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent)] font-mono">
-                  Inspecting Domain
-                </span>
-                <h3 className="text-lg font-bold text-[var(--text-primary)] mt-0.5">
-                  {activeSkill.name}
-                </h3>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-colors"
+                  style={{
+                    backgroundColor: `${accent}18`,
+                    borderColor: `${accent}40`,
+                    color: accent,
+                  }}
+                >
+                  {renderDomainIcon(activeDomain.iconName, 'w-5 h-5')}
+                </div>
+                <div>
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider font-mono"
+                    style={{ color: accent }}
+                  >
+                    Inspecting Domain
+                  </span>
+                  <h3 className="text-base sm:text-lg font-bold text-white mt-0.5">
+                    {activeDomain.name}
+                  </h3>
+                </div>
               </div>
+
               <span
-                className="text-xs px-2.5 py-1 rounded-full font-bold border"
-                style={{
-                  backgroundColor: 'var(--active-nav-bg)',
-                  borderColor: 'var(--border-accent)',
-                  color: accent,
-                }}
+                className={`text-xs px-2.5 py-1 rounded-full font-bold border shrink-0 ${
+                  activeDomain.status === 'Mastered'
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                    : activeDomain.status === 'Proficient'
+                    ? 'border-sky-500/40 bg-sky-500/10 text-sky-400'
+                    : activeDomain.status === 'Developing'
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                    : 'border-slate-500/40 bg-slate-500/10 text-slate-400'
+                }`}
               >
-                {activeSkill.status}
+                {activeDomain.status}
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] text-center">
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {activeDomain.description}
+            </p>
+
+            {/* Metrics Triple Box */}
+            <div className="grid grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-900/80 border border-white/10 text-center">
               <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Proficiency</div>
-                <div className="text-xl font-extrabold font-mono mt-0.5" style={{ color: accent }}>
-                  {activeSkill.proficiency}%
+                <div className="text-[10px] text-slate-400">Mastery</div>
+                <div
+                  className="text-xl font-extrabold font-mono mt-0.5"
+                  style={{ color: accent }}
+                >
+                  {activeDomain.hasSufficientData ? `${activeDomain.proficiency}%` : '—'}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Solved</div>
-                <div className="text-xl font-extrabold text-[var(--text-primary)] font-mono mt-0.5">
-                  {activeSkill.solvedCount} <span className="text-xs font-normal text-[var(--text-muted)]">/ {activeSkill.totalCount}</span>
+                <div className="text-[10px] text-slate-400">Solved</div>
+                <div className="text-xl font-extrabold text-white font-mono mt-0.5">
+                  {activeDomain.solvedCount}{' '}
+                  <span className="text-xs font-normal text-slate-500">
+                    / {activeDomain.totalQuestions}
+                  </span>
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Accuracy</div>
-                <div className="text-xl font-extrabold text-[var(--text-primary)] font-mono mt-0.5">
-                  {activeSkill.attemptRate}%
+                <div className="text-[10px] text-slate-400">Accuracy</div>
+                <div className="text-xl font-extrabold text-white font-mono mt-0.5">
+                  {activeDomain.accuracy !== null ? `${activeDomain.accuracy}%` : '—'}
                 </div>
               </div>
             </div>
 
-            {/* Progress bar */}
+            {/* Overall Domain Progress Bar */}
             <div>
-              <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-1.5 font-medium">
-                <span>Domain Mastery Completion</span>
-                <span className="font-mono text-[var(--text-primary)]">
-                  {Math.round((activeSkill.solvedCount / activeSkill.totalCount) * 100)}%
+              <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5 font-medium">
+                <span>Domain Problem Completion</span>
+                <span className="font-mono text-white">
+                  {activeDomain.completionRate}%
                 </span>
               </div>
-              <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
-                    width: `${(activeSkill.solvedCount / activeSkill.totalCount) * 100}%`,
+                    width: `${activeDomain.completionRate}%`,
                     backgroundColor: accent,
-                    boxShadow: `0 0 10px ${accentGlow}`,
+                    boxShadow: `0 0 10px ${accent}80`,
                   }}
                 />
               </div>
             </div>
 
-            {/* Action CTA */}
-            {onNavigateToProblems && (
-              <button
-                type="button"
-                onClick={() => onNavigateToProblems(activeSkill.shortName)}
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-[var(--accent)] text-[var(--bg-main)] hover:bg-[var(--accent-hover)] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md group"
-              >
-                <span>Practice {activeSkill.shortName} Problems</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </button>
-            )}
+            {/* Constituent Categories List */}
+            <div className="space-y-2 pt-2 border-t border-white/10">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span>Constituent Categories ({activeDomain.categories.length})</span>
+                <span className="text-[10px] font-normal text-slate-500">
+                  Individual category metrics
+                </span>
+              </div>
+
+              <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                {activeDomain.categories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    className="p-2.5 rounded-xl bg-slate-900/60 border border-white/5 space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-white truncate">
+                        {cat.name}
+                      </span>
+                      {onNavigateToProblems && (
+                        <button
+                          type="button"
+                          onClick={() => onNavigateToProblems(cat.id)}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium hover:opacity-80 transition-opacity cursor-pointer shrink-0"
+                          style={{ color: accent }}
+                        >
+                          Practice
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                      <span>
+                        Solved: {cat.solvedCount}/{cat.totalCount} ({cat.completion}%)
+                      </span>
+                      <span className="font-bold" style={{ color: accent }}>
+                        Mastery: {cat.hasData ? `${cat.mastery}%` : '—'}
+                      </span>
+                    </div>
+
+                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${cat.completion}%`,
+                          backgroundColor: accent,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* All Categories Compact Table */}
+          {/* All 6 AI Competency Domains Quick Selection Table */}
           <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-2 flex-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] block mb-2">
-              All 6 Evaluation Axes
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] block mb-1">
+              All 6 Competency Domains
             </span>
             <div className="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar pr-1">
-              {skills.map((skill) => {
-                const isSelected = activeSkill.id === skill.id;
+              {filteredDomains.map((d) => {
+                const isSelected = activeDomain.id === d.id;
                 return (
                   <div
-                    key={skill.id}
-                    onClick={() => setSelectedSkill(skill)}
+                    key={d.id}
+                    onClick={() => setSelectedDomainId(d.id)}
                     className={`flex items-center justify-between p-2.5 rounded-xl text-xs transition-all cursor-pointer border ${
                       isSelected
-                        ? 'bg-[var(--active-nav-bg)] border-[var(--border-accent)] text-[var(--text-primary)] font-semibold'
+                        ? 'border text-white font-semibold'
                         : 'hover:bg-[var(--bg-surface-elevated)] border-transparent text-[var(--text-secondary)]'
                     }`}
+                    style={
+                      isSelected
+                        ? {
+                            backgroundColor: 'var(--active-nav-bg)',
+                            borderColor: 'var(--border-accent)',
+                          }
+                        : undefined
+                    }
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: isSelected ? accent : accentSecondary }}
-                      />
-                      <span className="truncate">{skill.name}</span>
+                      <div
+                        className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                        style={{
+                          backgroundColor: 'var(--active-nav-bg)',
+                          color: 'var(--accent)',
+                        }}
+                      >
+                        {renderDomainIcon(d.iconName, 'w-3.5 h-3.5')}
+                      </div>
+                      <span className="truncate">{d.name}</span>
                     </div>
                     <div className="flex items-center gap-3 shrink-0 font-mono">
                       <span className="text-[11px] text-[var(--text-muted)]">
-                        {skill.solvedCount}/{skill.totalCount}
+                        {d.solvedCount}/{d.totalQuestions}
                       </span>
-                      <span className="font-bold tabular-nums" style={{ color: accent }}>
-                        {skill.proficiency}%
+                      <span
+                        className="font-bold tabular-nums"
+                        style={{ color: 'var(--accent)' }}
+                      >
+                        {d.hasSufficientData ? `${d.proficiency}%` : '—'}
                       </span>
                     </div>
                   </div>

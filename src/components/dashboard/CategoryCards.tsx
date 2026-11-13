@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { Box, ChevronRight } from 'lucide-react';
-import { CATEGORIES_LIST, AimCategory as BaseCategory } from '../../data/categories';
+import { CATEGORIES_LIST, AimCategory as BaseCategory, categoryBannerImages } from '../../data/categories';
 import { Problem } from '../../types';
 
 export interface AimCategory extends BaseCategory {
@@ -15,20 +15,8 @@ interface CategoryCardsProps {
   onSelectCategory: (categoryId: string) => void;
 }
 
-// Explicit mapping: category ID -> image in public/assets/categories/
-const CATEGORY_IMAGES: Record<string, string> = {
-  'ml-fundamentals': '/assets/categories/header-ml-fundamentals.png',
-  'deep-learning': '/assets/categories/header-deep-learning.png',
-  'llm-foundations': '/assets/categories/header-llm-foundations.png',
-  'rag-retrieval': '/assets/categories/header-rag-retrieval.png',
-  'ai-agents': '/assets/categories/header-ai-agents.png',
-  'eval-metrics': '/assets/categories/header-eval-metrics.png',
-  'safety-governance': '/assets/categories/header-safety-governance.png',
-  'mlops-monitoring': '/assets/categories/header-mlops-monitoring.png',
-  'inference-serving': '/assets/categories/header-inference-serving.png',
-  'system-design': '/assets/categories/header-system-design.png',
-  'coding-problems': '/assets/categories/header-coding-problems.png',
-};
+// Explicit mapping: category ID -> banner image
+const CATEGORY_IMAGES: Record<string, string> = categoryBannerImages;
 
 export const CategoryCards: React.FC<CategoryCardsProps> = ({
   problems = [],
@@ -101,6 +89,7 @@ export const CategoryCards: React.FC<CategoryCardsProps> = ({
               focus-visible:ring-offset-2 focus-visible:ring-offset-[#050b16]"
             style={{
               borderColor: `${cat.color}75`,
+              backgroundColor: 'var(--bg-surface)',
               ['--category-color' as string]: cat.color,
             }}
           >
@@ -112,7 +101,7 @@ export const CategoryCards: React.FC<CategoryCardsProps> = ({
               className="pointer-events-none absolute inset-0 -z-20
                 h-full w-full object-cover object-center
                 transition-transform duration-500
-                group-hover:scale-[1.035]"
+                group-hover:scale-[1.035] opacity-50"
               onError={(event) => {
                 event.currentTarget.style.visibility = 'hidden';
               }}
@@ -126,15 +115,9 @@ export const CategoryCards: React.FC<CategoryCardsProps> = ({
                 background: `
                   linear-gradient(
                     90deg,
-                    rgba(3, 8, 18, 0.98) 0%,
-                    rgba(3, 8, 18, 0.92) 32%,
-                    rgba(3, 8, 18, 0.68) 53%,
-                    rgba(3, 8, 18, 0.12) 100%
-                  ),
-                  linear-gradient(
-                    0deg,
-                    rgba(3, 8, 18, 0.75) 0%,
-                    transparent 45%
+                    var(--bg-surface) 0%,
+                    var(--bg-surface) 38%,
+                    transparent 100%
                   )
                 `,
               }}
@@ -162,14 +145,14 @@ export const CategoryCards: React.FC<CategoryCardsProps> = ({
                 {cat.order} of 11
               </p>
 
-              <h3 className="text-base font-bold leading-tight text-white
+              <h3 className="category-title text-base font-bold leading-tight text-[var(--text-primary)]
                 transition-colors duration-200
                 group-hover:text-[var(--category-color)]">
                 {cat.name}
               </h3>
 
               <p className="mt-2 line-clamp-2 text-[11px]
-                leading-relaxed text-slate-300">
+                leading-relaxed text-[var(--text-secondary)]">
                 {cat.description}
               </p>
             </div>
@@ -178,7 +161,7 @@ export const CategoryCards: React.FC<CategoryCardsProps> = ({
             <div className="mt-4 w-full">
               <div className="mb-2 flex items-center justify-between gap-2
                 text-[10px]">
-                <span className="font-mono tabular-nums text-slate-300">
+                <span className="font-mono tabular-nums text-[var(--text-muted)]">
                   {cat.solved} / {cat.total} questions solved
                 </span>
 
@@ -190,7 +173,7 @@ export const CategoryCards: React.FC<CategoryCardsProps> = ({
                 </span>
               </div>
 
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-subtle)]">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -205,8 +188,8 @@ export const CategoryCards: React.FC<CategoryCardsProps> = ({
             <ChevronRight
               aria-hidden="true"
               className="absolute right-3 top-3 h-4 w-4
-                text-white/50 transition-all duration-200
-                group-hover:translate-x-0.5 group-hover:text-white"
+                text-[var(--text-muted)] transition-all duration-200
+                group-hover:translate-x-0.5 group-hover:text-[var(--text-primary)]"
             />
           </button>
         ))}

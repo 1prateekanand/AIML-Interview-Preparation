@@ -1,23 +1,50 @@
-
 @import "tailwindcss";
+
+/* =========================================
+   1. GLOBAL THEME VARIABLES
+========================================= */
 
 @layer base {
   :root {
-    --bg-main: #0C120F;
-    --bg-surface: #19251D;
-    --bg-surface-elevated: #223328;
-    --bg-sidebar: #131E17;
-    --border-subtle: #26382C;
-    --border-accent: rgba(163, 230, 53, 0.35);
-    --accent: #A3E635;
-    --accent-secondary: #D9F99D;
-    --accent-glow: rgba(163, 230, 53, 0.22);
-    --accent-hover: #b4ee4d;
-    --text-primary: #F1F5F9;
-    --text-secondary: #94A3B8;
-    --text-muted: #64748B;
-    --active-nav-bg: rgba(163, 230, 53, 0.12);
-    --active-nav-border: rgba(163, 230, 53, 0.35);
+    --bg-main: #0B0B0C;
+    --bg-surface: #161618;
+    --bg-surface-elevated: #202024;
+    --bg-sidebar: #09090B;
+
+    --border-subtle: #26262A;
+    --border-accent: rgba(168, 85, 247, 0.55);
+
+    /* Default theme - Gold */
+    --accent: #E5A93C;
+    --accent-rgb: 229, 169, 60;
+    --accent-secondary: #F5D77F;
+    --accent-glow: rgba(229, 169, 60, 0.28);
+    --accent-hover: #f5ba42;
+
+    --text-primary: #F5F5F7;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+
+    --active-nav-bg: rgba(229, 169, 60, 0.15);
+    --active-nav-border: rgba(229, 169, 60, 0.42);
+
+    /* Centralized Theme Tokens */
+    --theme-primary: var(--accent);
+    --theme-secondary: var(--accent-secondary);
+    --theme-surface: var(--bg-surface);
+    --theme-surface-elevated: var(--bg-surface-elevated);
+    --theme-hover: var(--accent-hover);
+    --theme-glow: var(--accent-glow);
+    --theme-border: var(--border-accent);
+    --theme-border-subtle: var(--border-subtle);
+    --theme-active-bg: var(--active-nav-bg);
+    --theme-active-border: var(--active-nav-border);
+
+    /* Sidebar text and icon configuration */
+    --theme-text: #FFFFFF;
+    --theme-text-muted: #FFFFFF;
+    --theme-nav-text-muted: var(--theme-primary);
+    --theme-nav-hover: var(--theme-active-bg);
   }
 
   * {
@@ -35,7 +62,261 @@
   }
 }
 
-/* Custom delicate dark scrollbars */
+/* =========================================
+   2. PREMIUM GLOW BUTTONS
+========================================= */
+
+.glow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  color: var(--light-btn-text, #FFFFFF);
+
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+
+  transition:
+    background 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease;
+
+  outline: none;
+}
+
+/* Hover Effect */
+.glow-btn:hover {
+  background: var(--theme-active-bg);
+  border-color: var(--theme-primary);
+  color: var(--light-btn-text, #FFFFFF);
+
+  box-shadow:
+    0 0 8px var(--theme-glow),
+    0 0 16px var(--theme-glow);
+
+  filter: brightness(1.12);
+}
+
+/* Click Animation */
+.glow-btn:active {
+  transform: scale(0.98);
+}
+
+/* Keyboard Focus */
+.glow-btn:focus-visible {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: 3px;
+}
+
+/* Persistent Active State */
+.glow-btn.active,
+.glow-btn-active {
+  border: 1px solid var(--theme-primary) !important;
+  background: var(--theme-active-bg) !important;
+  color: var(--nav-text-active, #FFFFFF) !important;
+
+  box-shadow:
+    0 0 8px var(--theme-glow),
+    0 0 16px var(--theme-glow) !important;
+
+  font-weight: 600;
+}
+
+/* =========================================
+   3. SIDEBAR NAVIGATION TEXT (DARK THEMES)
+========================================= */
+
+/* Main navigation labels & category items for dark themes */
+html:not([data-theme="ivory-amber"]) aside button > span,
+html:not([data-theme="ivory-amber"]) aside button .truncate,
+html:not([data-theme="ivory-amber"]) aside .sidebar-nav-label,
+html:not([data-theme="ivory-amber"]) aside .sidebar-category-name {
+  color: #FFFFFF !important;
+}
+
+/* Category heading */
+html:not([data-theme="ivory-amber"]) aside .uppercase,
+html:not([data-theme="ivory-amber"]) aside .sidebar-dropdown-label {
+  color: var(--theme-primary);
+}
+
+/* Question counts */
+html:not([data-theme="ivory-amber"]) aside button .font-mono,
+html:not([data-theme="ivory-amber"]) aside .sidebar-question-count {
+  color: var(--theme-primary);
+}
+
+/* Preserve theme-colored icons */
+aside button svg {
+  transition:
+    color 0.25s ease,
+    filter 0.25s ease;
+}
+
+/* Icon hover glow */
+aside button:hover svg {
+  filter: drop-shadow(0 0 4px var(--theme-glow));
+}
+
+/* =========================================
+   4. SIDEBAR HOVER EFFECTS
+========================================= */
+
+aside button:not(.glow-btn-active):hover {
+  background-color: var(--theme-nav-hover);
+  transition: all 0.25s ease;
+}
+
+/* =========================================
+   5. IVORY + AMBER THEME — HIGH CONTRAST DARK TEXT RULES
+   Strictly active ONLY when data-theme="ivory-amber"
+========================================= */
+
+[data-theme="ivory-amber"],
+.theme-light {
+  --text-primary: #17130F;
+  --text-secondary: #51483D;
+  --text-muted: #817567;
+  --theme-text: #17130F;
+  --theme-text-muted: #51483D;
+  --theme-nav-text: #17130F;
+  --theme-nav-text-muted: #29231C;
+  --color-text: #17130F;
+  --color-text-muted: #817567;
+}
+
+/* 1. Sidebar Navigation Text: #29231C */
+[data-theme="ivory-amber"] aside button,
+[data-theme="ivory-amber"] aside button:not(.glow-btn-active):not(.active) > span,
+[data-theme="ivory-amber"] aside button:not(.glow-btn-active):not(.active) .truncate,
+[data-theme="ivory-amber"] aside .sidebar-nav-label {
+  color: #29231C !important;
+}
+
+/* Active navigation text: #17130F */
+[data-theme="ivory-amber"] aside .glow-btn.active,
+[data-theme="ivory-amber"] aside .glow-btn-active,
+[data-theme="ivory-amber"] aside .glow-btn.active > span,
+[data-theme="ivory-amber"] aside .glow-btn-active > span,
+[data-theme="ivory-amber"] aside .glow-btn.active .truncate,
+[data-theme="ivory-amber"] aside .glow-btn-active .truncate,
+[data-theme="ivory-amber"] aside .glow-btn.active .sidebar-nav-label,
+[data-theme="ivory-amber"] aside .glow-btn-active .sidebar-nav-label {
+  color: #17130F !important;
+}
+
+/* 2. Category Dropdown & Items under Problems */
+/* Category names: #17130F */
+[data-theme="ivory-amber"] aside .sidebar-category-name,
+[data-theme="ivory-amber"] aside .max-h-\[340px\] button .truncate,
+[data-theme="ivory-amber"] aside .max-h-\[340px\] button .sidebar-category-name {
+  color: #17130F !important;
+}
+
+/* Question counts: #817567 */
+[data-theme="ivory-amber"] aside .sidebar-question-count,
+[data-theme="ivory-amber"] aside button .font-mono,
+[data-theme="ivory-amber"] aside .tabular-nums {
+  color: #817567 !important;
+}
+
+/* Dropdown labels: #29231C */
+[data-theme="ivory-amber"] aside .sidebar-dropdown-label,
+[data-theme="ivory-amber"] aside .uppercase,
+[data-theme="ivory-amber"] [role="menu"] .uppercase,
+[data-theme="ivory-amber"] .dropdown-label {
+  color: #29231C !important;
+}
+
+/* 3. Button text: #17130F when button has a light background */
+[data-theme="ivory-amber"] .glow-btn:not([data-keep-white="true"]),
+[data-theme="ivory-amber"] .glow-btn:not([data-keep-white="true"]):hover,
+[data-theme="ivory-amber"] .glow-btn.active:not([data-keep-white="true"]),
+[data-theme="ivory-amber"] .glow-btn-active:not([data-keep-white="true"]),
+[data-theme="ivory-amber"] .glow-btn:not([data-keep-white="true"]) span,
+[data-theme="ivory-amber"] button.bg-white,
+[data-theme="ivory-amber"] button.bg-\[\#FFFFFF\] {
+  color: #17130F !important;
+}
+
+/* 4. Header, Search Bar, User Profile, Notification Icons, Theme Dropdown */
+[data-theme="ivory-amber"] header input {
+  color: #17130F !important;
+}
+
+[data-theme="ivory-amber"] header input::placeholder {
+  color: #817567 !important;
+}
+
+[data-theme="ivory-amber"] header kbd {
+  color: #817567 !important;
+  background-color: #F4EFE6 !important;
+  border-color: #E5DCD0 !important;
+}
+
+[data-theme="ivory-amber"] header .text-\[var\(--text-primary\)\] {
+  color: #17130F !important;
+}
+
+[data-theme="ivory-amber"] header .text-\[var\(--text-secondary\)\] {
+  color: #51483D !important;
+}
+
+[data-theme="ivory-amber"] header .text-\[var\(--text-muted\)\] {
+  color: #817567 !important;
+}
+
+/* 5. Dashboard Banner, Category Cards, Headings, Stat Badges, Tabs, Progress Numbers */
+[data-theme="ivory-amber"] h1:not(.category-hero *):not([data-keep-white="true"]),
+[data-theme="ivory-amber"] h2:not(.category-hero *):not([data-keep-white="true"]),
+[data-theme="ivory-amber"] h3:not(.category-hero *):not([data-keep-white="true"]),
+[data-theme="ivory-amber"] h4:not(.category-hero *):not([data-keep-white="true"]) {
+  color: #17130F !important;
+}
+
+/* Category names across dashboard: #17130F */
+[data-theme="ivory-amber"] .category-title,
+[data-theme="ivory-amber"] button[aria-label^="Open"] h3 {
+  color: #17130F !important;
+}
+
+/* Question counts across dashboard: #817567 */
+[data-theme="ivory-amber"] .tabular-nums.text-\[var\(--text-muted\)\],
+[data-theme="ivory-amber"] span.font-mono.text-\[var\(--text-muted\)\],
+[data-theme="ivory-amber"] span.text-\[var\(--text-muted\)\] {
+  color: #817567 !important;
+}
+
+/* Secondary descriptions: #51483D */
+[data-theme="ivory-amber"] p.text-\[var\(--text-secondary\)\],
+[data-theme="ivory-amber"] span.text-\[var\(--text-secondary\)\],
+[data-theme="ivory-amber"] div.text-\[var\(--text-secondary\)\] {
+  color: #51483D !important;
+}
+
+/* 6. Question Pages and Evaluation Pages */
+[data-theme="ivory-amber"] .eval-title,
+[data-theme="ivory-amber"] .question-title {
+  color: #17130F !important;
+}
+
+/* Prevent any hardcoded text-white from showing up as white in Ivory + Amber (except dark category hero) */
+[data-theme="ivory-amber"] aside .text-white,
+[data-theme="ivory-amber"] main .text-white:not(.category-hero *):not([data-keep-white="true"]),
+[data-theme="ivory-amber"] header .text-white:not([data-keep-white="true"]) {
+  color: #17130F !important;
+}
+
+
+/* =========================================
+   5. CUSTOM SCROLLBARS
+========================================= */
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -51,12 +332,21 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.35);
+  background: var(--theme-primary);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--theme-primary);
+  border-radius: 4px;
 }
 
 /* =========================================
-   Category Hero Banner
-   ========================================= */
+   6. CATEGORY HERO BANNER
+========================================= */
 
 .category-hero {
   position: relative;
@@ -65,20 +355,15 @@
   background-color: #070b14;
 }
 
-/* Full-size category image */
-.category-hero__image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+/* Keep the banner image in normal flow so it determines the
+   banner's height. The React overlay is positioned absolutely. */
+.category-hero > img {
   display: block;
-  object-fit: cover;
-  object-position: center right;
-  z-index: -2;
-  pointer-events: none;
+  width: 100%;
+  height: auto;
 }
 
-/* Dark gradient: strong on the left, transparent on the right */
+/* Decorative overlay is retained for legacy hero layouts. */
 .category-hero::after {
   content: "";
   position: absolute;
@@ -100,15 +385,19 @@
   pointer-events: none;
 }
 
-/* Keep category hero content above background layers */
-.category-hero > *:not(.category-hero__image) {
-  position: relative;
-}
+/* IMPORTANT:
+   Do not set position: relative on every direct child.
+   It overrides the Tailwind `absolute` positioning of the
+   dynamic content overlay in CategoryHeroBanner.tsx. */
 
-/* Responsive image positioning */
+/* =========================================
+   7. RESPONSIVE HERO BANNER
+========================================= */
+
 @media (max-width: 768px) {
-  .category-hero__image {
-    object-position: 65% center;
+  .category-hero > img {
+    width: 100%;
+    height: auto;
   }
 
   .category-hero::after {
@@ -125,4 +414,34 @@
         transparent 65%
       );
   }
+}
+
+/* =========================================
+   8. QUESTION LIST PAGINATION SCROLLBAR
+========================================= */
+
+.pagination-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-accent, rgba(255, 255, 255, 0.2)) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pagination-scroll::-webkit-scrollbar {
+  height: 3px;
+}
+
+.pagination-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pagination-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-subtle, rgba(255, 255, 255, 0.15));
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+.pagination-scroll:hover::-webkit-scrollbar-thumb {
+  background: var(--accent, #eab308);
 }

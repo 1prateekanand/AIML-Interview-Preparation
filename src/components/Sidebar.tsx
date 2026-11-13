@@ -1,16 +1,27 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
-  ListOrdered,
+  List,
   Heart,
   BarChart3,
   ChevronDown,
-  Layers,
   Settings,
   HelpCircle,
+  Brain,
+  Layers,
+  Cpu,
+  Database,
+  Bot,
+  Activity,
+  ShieldAlert,
+  Terminal,
+  Zap,
+  Boxes,
+  Code2,
+  Network,
 } from 'lucide-react';
 import { PageId, Problem } from '../types';
-import { CATEGORIES_LIST } from '../data/categories';
 
 interface SidebarProps {
   currentPage: PageId;
@@ -18,7 +29,32 @@ interface SidebarProps {
   selectedCategory: string | null;
   onSelectCategory: (categorySlug: string | null) => void;
   problems?: Problem[];
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
 }
+
+interface CategoryDropdownItem {
+  id: string | null;
+  name: string;
+  fallbackCount: number;
+  icon: React.FC<{ className?: string }>;
+}
+
+// AI/ML Categories
+const CATEGORY_DROPDOWN_ITEMS: CategoryDropdownItem[] = [
+  { id: null, name: 'All Categories', fallbackCount: 6430, icon: Layers },
+  { id: 'ml-fundamentals', name: 'ML Fundamentals', fallbackCount: 205, icon: Brain },
+  { id: 'deep-learning', name: 'Deep Learning, NLP & Vision', fallbackCount: 426, icon: Network },
+  { id: 'llm-foundations', name: 'LLM Foundations & Customization', fallbackCount: 1095, icon: Cpu },
+  { id: 'rag-retrieval', name: 'RAG & Retrieval', fallbackCount: 1208, icon: Database },
+  { id: 'ai-agents', name: 'AI Agents & Agentic AI', fallbackCount: 519, icon: Bot },
+  { id: 'eval-metrics', name: 'Evaluation & Metrics', fallbackCount: 458, icon: Activity },
+  { id: 'safety-governance', name: 'Safety, Guardrails & Governance', fallbackCount: 319, icon: ShieldAlert },
+  { id: 'mlops-monitoring', name: 'MLOps, LLMOps & Monitoring', fallbackCount: 288, icon: Terminal },
+  { id: 'inference-serving', name: 'Inference & Serving', fallbackCount: 581, icon: Zap },
+  { id: 'system-design', name: 'System Design & Architecture', fallbackCount: 493, icon: Boxes },
+  { id: 'coding-problems', name: 'Coding & Problem-Solving', fallbackCount: 250, icon: Code2 },
+];
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentPage,
@@ -26,23 +62,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedCategory,
   onSelectCategory,
   problems = [],
+  isOpenMobile = false,
+  onCloseMobile,
 }) => {
-  const [isProblemsExpanded, setIsProblemsExpanded] = useState<boolean>(true);
+  // Problems expandable accordion state
+  const [isProblemsOpen, setIsProblemsOpen] = useState<boolean>(() => {
+    return currentPage === 'problems' || selectedCategory !== null;
+  });
 
-  // Auto-expand if navigating to problems or when a category is selected
+  // Keep dropdown open when navigating problems
   useEffect(() => {
-    if (currentPage === 'problems' || selectedCategory) {
-      setIsProblemsExpanded(true);
+    if (currentPage === 'problems' || selectedCategory !== null) {
+      setIsProblemsOpen(true);
     }
   }, [currentPage, selectedCategory]);
 
-  const handleProblemsClick = () => {
-    if (currentPage !== 'problems') {
-      onSelectPage('problems');
-      setIsProblemsExpanded(true);
-    } else {
-      setIsProblemsExpanded((prev) => !prev);
-    }
+  const handleNavClick = (page: PageId) => {
+    onSelectPage(page);
+    if (onCloseMobile) onCloseMobile();
+  };
+
+  const handleToggleProblems = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsProblemsOpen((prev) => !prev);
   };
 
   const handleSelectSubCategory = (slug: string | null) => {
@@ -50,235 +93,306 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (currentPage !== 'problems') {
       onSelectPage('problems');
     }
+    if (onCloseMobile) onCloseMobile();
+  };
+
+  // Get dynamic category count
+  const getCategoryCount = (item: CategoryDropdownItem): number => {
+    if (item.id === null) {
+      return problems.length > 0 ? problems.length : item.fallbackCount;
+    }
+
+    const matching = problems.filter((p) => {
+      if (p.categorySlug === item.id) return true;
+
+      if (p.category) {
+        const cleanP = p.category.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanItem = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return cleanP.includes(cleanItem) || cleanItem.includes(cleanP);
+      }
+
+      return false;
+    }).length;
+
+    return matching > 0 ? matching : item.fallbackCount;
   };
 
   return (
-    <aside className="w-64 bg-[var(--bg-sidebar)] border-r border-[var(--border-subtle)] flex flex-col shrink-0 h-screen sticky top-0 transition-colors duration-200 select-none z-20">
-      {/* Brand Header: Sabevia - The path to knowledge. */}
-      <div className="p-4 md:p-5 border-b border-[var(--border-subtle)]/60 shrink-0">
+    <>
+      {/* Mobile backdrop */}
+      {isOpenMobile && (
         <div
-          onClick={() => onSelectPage('dashboard')}
-          className="flex items-center gap-3 cursor-pointer group"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') onSelectPage('dashboard');
-          }}
-        >
-          {/* Sabevia Logo Emblem (Golden Mountain + Star + Winding Path) */}
-          <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 bg-[#0E0E12] border border-[var(--border-accent)] flex items-center justify-center p-1 shadow-sm group-hover:scale-105 transition-transform">
-            <img
-              src="/assets/aistudio/sabevia_logo.png"
-              alt="Sabevia Emblem"
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                // Inline SVG fallback if image fails to load
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          </div>
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden"
+          onClick={onCloseMobile}
+        />
+      )}
 
-          <div className="min-w-0">
-            <span className="text-base font-extrabold tracking-tight text-[var(--text-primary)] block leading-tight">
-              Sabevia
-            </span>
-            <span className="text-[10px] text-[var(--text-muted)] tracking-wide font-medium block">
-              The path to knowledge.
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Scrollable Navigation Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-1 focus:outline-none custom-scrollbar">
-        {/* Dashboard */}
-        <button
-          type="button"
-          onClick={() => onSelectPage('dashboard')}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left ${
-            currentPage === 'dashboard'
-              ? 'bg-[var(--active-nav-bg)] text-[var(--accent)] border border-[var(--active-nav-border)] shadow-xs font-semibold'
-              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] border border-transparent'
-          }`}
-        >
-          <LayoutDashboard
-            className={`w-4 h-4 shrink-0 ${
-              currentPage === 'dashboard' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'
-            }`}
-          />
-          <span className="truncate">Dashboard</span>
-        </button>
-
-        {/* Problems Group */}
-        <div className="space-y-0.5">
+      <aside
+        className={`w-64 bg-[var(--bg-sidebar)] border-r border-[var(--border-subtle)] flex flex-col shrink-0 h-screen sticky top-0 transition-all duration-300 select-none z-40 ${
+          isOpenMobile
+            ? 'fixed inset-y-0 left-0 shadow-2xl translate-x-0'
+            : 'max-md:-translate-x-full max-md:fixed max-md:inset-y-0 max-md:left-0 md:translate-x-0'
+        }`}
+      >
+        {/* BRANDING SECTION */}
+        <div className="p-4 md:px-5 md:py-5 shrink-0">
           <div
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
-              currentPage === 'problems'
-                ? 'bg-[var(--active-nav-bg)] text-[var(--accent)] border border-[var(--active-nav-border)] shadow-xs font-semibold'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] border border-transparent'
-            }`}
-            onClick={handleProblemsClick}
+            onClick={() => handleNavClick('dashboard')}
+            className="flex items-center gap-3.5 cursor-pointer group"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') handleNavClick('dashboard');
+            }}
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <ListOrdered
-                className={`w-4 h-4 shrink-0 ${
-                  currentPage === 'problems' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'
-                }`}
+            <div
+              className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 flex items-center justify-center p-1 transition-all duration-300 group-hover:scale-105"
+              style={{
+                borderColor: 'var(--theme-border, var(--border-accent))',
+                borderWidth: '1.5px',
+                borderStyle: 'solid',
+                boxShadow: '0 0 14px -1px var(--theme-glow, var(--accent-glow)), inset 0 0 8px rgba(0,0,0,0.4)',
+                backgroundColor: 'var(--theme-surface, var(--bg-surface))',
+              }}
+            >
+              <img
+                src="/assets/aistudio/sabevia_logo.png"
+                alt="Sabevia Emblem"
+                className="w-full h-full object-contain filter drop-shadow-[0_0_6px_var(--theme-glow,var(--accent-glow))]"
               />
-              <span className="truncate">Problems</span>
             </div>
 
+            <div className="min-w-0">
+              <span
+                className="text-[22px] font-bold tracking-tight block leading-tight transition-colors duration-200"
+                style={{
+                  fontFamily: "'Cormorant Garamond', 'Playfair Display', Georgia, serif",
+                  color: 'var(--theme-primary, var(--accent))',
+                  textShadow: '0 0 16px var(--theme-glow, var(--accent-glow))',
+                }}
+              >
+                Sabevia
+              </span>
+
+              <span
+                className="text-[10px] tracking-wide font-normal block mt-0.5 opacity-90 transition-colors"
+                style={{ color: 'var(--theme-nav-text-muted, var(--text-secondary))' }}
+              >
+                The path to knowledge.
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* NAVIGATION SECTION */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 space-y-1.5 focus:outline-none custom-scrollbar">
+
+          {/* Dashboard */}
+          <button
+            type="button"
+            onClick={() => handleNavClick('dashboard')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-[13px] transition-all duration-200 cursor-pointer text-left relative ${
+              currentPage === 'dashboard'
+                ? 'glow-btn glow-btn-active font-semibold'
+                : 'font-medium border border-transparent'
+            }`}
+            style={
+              currentPage === 'dashboard'
+                ? {}
+                : { color: 'var(--theme-nav-text-muted, var(--text-secondary))' }
+            }
+          >
+            <LayoutDashboard
+              className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
+                currentPage === 'dashboard'
+                  ? 'text-[var(--theme-primary)]'
+                  : 'text-[var(--theme-nav-text-muted)]'
+              }`}
+            />
+            <span className="truncate text-white sidebar-nav-label">Dashboard</span>
+          </button>
+
+          {/* Problems Dropdown */}
+          <div className="space-y-1">
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsProblemsExpanded((prev) => !prev);
-              }}
-              aria-label="Toggle problems categories"
-              className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/10 transition-colors"
+              onClick={handleToggleProblems}
+              aria-expanded={isProblemsOpen}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-[13px] transition-all duration-200 cursor-pointer text-left relative ${
+                currentPage === 'problems'
+                  ? 'glow-btn glow-btn-active font-semibold'
+                  : 'font-medium border border-transparent hover:bg-[var(--theme-nav-hover)]'
+              }`}
+              style={
+                currentPage === 'problems'
+                  ? {}
+                  : { color: 'var(--theme-nav-text-muted, var(--text-secondary))' }
+              }
             >
-              <ChevronDown
-                className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                  isProblemsExpanded ? 'rotate-180' : 'rotate-0'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Submenu Dropdown */}
-          {isProblemsExpanded && (
-            <div className="ml-3 pl-3 border-l border-[var(--border-subtle)] space-y-0.5 py-1">
-              {/* All Problems */}
-              <button
-                type="button"
-                onClick={() => handleSelectSubCategory(null)}
-                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer text-left relative ${
-                  currentPage === 'problems' && !selectedCategory
-                    ? 'text-[var(--accent)] bg-[var(--active-nav-bg)] font-semibold border-l-2 border-[var(--accent)]'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80'
-                }`}
-              >
-                <Layers
-                  className={`w-3 h-3 shrink-0 ${
-                    currentPage === 'problems' && !selectedCategory
-                      ? 'text-[var(--accent)]'
-                      : 'text-[var(--text-muted)]'
+              <div className="flex items-center gap-3 min-w-0">
+                <List
+                  className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
+                    currentPage === 'problems'
+                      ? 'text-[var(--theme-primary)]'
+                      : 'text-[var(--theme-nav-text-muted)]'
                   }`}
                 />
-                <span className="truncate flex-1">All Problems</span>
-                {problems.length > 0 && (
-                  <span
-                    className={`text-[10px] font-mono tabular-nums px-1.5 py-0.5 rounded ${
-                      currentPage === 'problems' && !selectedCategory
-                        ? 'text-[var(--accent)] font-bold bg-[var(--active-nav-bg)]'
-                        : 'text-[var(--text-muted)]'
-                    }`}
-                  >
-                    {problems.length}
+                <span className="truncate text-white sidebar-nav-label">Problems</span>
+              </div>
+
+              <div className="p-0.5 rounded text-[var(--theme-primary)]">
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform duration-300 ease-in-out ${
+                    isProblemsOpen ? 'rotate-180' : 'rotate-0'
+                  }`}
+                />
+              </div>
+            </button>
+
+            {/* AI/ML Categories */}
+            {isProblemsOpen && (
+              <div className="ml-2 pl-2 border-l border-[var(--border-subtle)] space-y-1 py-1 animate-in fade-in slide-in-from-top-1 duration-200">
+
+                <div className="flex items-center justify-between px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white sidebar-dropdown-label border-b border-[var(--border-subtle)]/60 mb-1">
+                  <span>AI/ML CATEGORIES</span>
+                  <span className="text-[9px] font-mono opacity-80 text-[var(--theme-primary)] sidebar-question-count">
+                    12 DOMAINS
                   </span>
-                )}
-              </button>
+                </div>
 
-              {/* 11 Categories */}
-              {CATEGORIES_LIST.map((cat) => {
-                const isActive = currentPage === 'problems' && selectedCategory === cat.id;
-                const catCount = problems.filter((p) => p.categorySlug === cat.id).length;
+                <div className="max-h-[340px] overflow-y-auto space-y-0.5 pr-1 custom-scrollbar">
+                  {CATEGORY_DROPDOWN_ITEMS.map((catItem, idx) => {
+                    const isSelected =
+                      currentPage === 'problems' &&
+                      (catItem.id === null
+                        ? selectedCategory === null
+                        : selectedCategory === catItem.id);
 
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => handleSelectSubCategory(cat.id)}
-                    title={cat.name}
-                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer text-left relative ${
-                      isActive
-                        ? 'text-[var(--accent)] bg-[var(--active-nav-bg)] font-semibold border-l-2 border-[var(--accent)]'
-                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]/80'
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 transition-transform ${
-                        isActive
-                          ? 'bg-[var(--accent)] scale-125 shadow-[0_0_6px_var(--accent)]'
-                          : 'bg-[var(--text-muted)]/50 group-hover:bg-[var(--text-secondary)]'
-                      }`}
-                    />
-                    <span className="truncate flex-1">{cat.name}</span>
-                    {catCount > 0 && (
-                      <span
-                        className={`text-[10px] font-mono tabular-nums px-1.5 py-0.5 rounded ${
-                          isActive
-                            ? 'text-[var(--accent)] font-bold bg-[var(--active-nav-bg)]'
-                            : 'text-[var(--text-muted)]'
+                    const count = getCategoryCount(catItem);
+                    const IconComp = catItem.icon;
+
+                    return (
+                      <button
+                        key={catItem.id ?? 'all-categories'}
+                        type="button"
+                        onClick={() => handleSelectSubCategory(catItem.id)}
+                        title={catItem.name}
+                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150 cursor-pointer text-left group ${
+                          isSelected
+                            ? 'glow-btn glow-btn-active font-semibold'
+                            : 'border border-transparent hover:bg-[var(--theme-nav-hover)] hover:text-[var(--theme-primary)]'
                         }`}
+                        style={
+                          isSelected
+                            ? {}
+                            : { color: 'var(--theme-nav-text-muted, var(--text-secondary))' }
+                        }
                       >
-                        {catCount}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <IconComp
+                            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                              isSelected
+                                ? 'text-[var(--theme-primary)]'
+                                : 'text-[var(--theme-nav-text-muted)] group-hover:text-[var(--theme-primary)]'
+                            }`}
+                          />
+
+                          <span className="truncate text-[11px] sm:text-xs text-white sidebar-category-name">
+                            {idx === 0 ? catItem.name : `${idx}. ${catItem.name}`}
+                          </span>
+                        </div>
+
+                        <span
+                          className={`text-[10px] font-mono tabular-nums px-1 rounded transition-colors sidebar-question-count ${
+                            isSelected
+                              ? 'text-[var(--theme-primary)] font-bold'
+                              : 'opacity-70 group-hover:opacity-100 group-hover:text-[var(--theme-primary)]'
+                          }`}
+                        >
+                          {count.toLocaleString()}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Favorites */}
+          <button
+            type="button"
+            onClick={() => handleNavClick('favorites')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-[13px] transition-all duration-200 cursor-pointer text-left relative ${
+              currentPage === 'favorites'
+                ? 'glow-btn glow-btn-active font-semibold'
+                : 'font-medium border border-transparent hover:bg-[var(--theme-nav-hover)]'
+            }`}
+            style={
+              currentPage === 'favorites'
+                ? {}
+                : { color: 'var(--theme-nav-text-muted, var(--text-secondary))' }
+            }
+          >
+            <Heart
+              className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
+                currentPage === 'favorites'
+                  ? 'text-[var(--theme-primary)]'
+                  : 'text-[var(--theme-nav-text-muted)]'
+              }`}
+            />
+            <span className="truncate text-white sidebar-nav-label">Favorites</span>
+          </button>
+
+          {/* Insights */}
+          <button
+            type="button"
+            onClick={() => handleNavClick('insights')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-[13px] transition-all duration-200 cursor-pointer text-left relative ${
+              currentPage === 'insights'
+                ? 'glow-btn glow-btn-active font-semibold'
+                : 'font-medium border border-transparent hover:bg-[var(--theme-nav-hover)]'
+            }`}
+            style={
+              currentPage === 'insights'
+                ? {}
+                : { color: 'var(--theme-nav-text-muted, var(--text-secondary))' }
+            }
+          >
+            <BarChart3
+              className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
+                currentPage === 'insights'
+                  ? 'text-[var(--theme-primary)]'
+                  : 'text-[var(--theme-nav-text-muted)]'
+              }`}
+            />
+            <span className="truncate text-white sidebar-nav-label">Insights</span>
+          </button>
         </div>
 
-        {/* Favorites */}
-        <button
-          type="button"
-          onClick={() => onSelectPage('favorites')}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left ${
-            currentPage === 'favorites'
-              ? 'bg-[var(--active-nav-bg)] text-[var(--accent)] border border-[var(--active-nav-border)] shadow-xs font-semibold'
-              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] border border-transparent'
-          }`}
-        >
-          <Heart
-            className={`w-4 h-4 shrink-0 ${
-              currentPage === 'favorites' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'
-            }`}
-          />
-          <span className="truncate">Favorites</span>
-        </button>
+        {/* BOTTOM SECTION */}
+        <div className="p-3 border-t border-[var(--border-subtle)] shrink-0 space-y-1">
+          <button
+            type="button"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium hover:bg-[var(--theme-nav-hover)] transition-colors cursor-pointer text-left group"
+            style={{ color: 'var(--theme-nav-text-muted, var(--text-secondary))' }}
+            onClick={() => handleNavClick('dashboard')}
+          >
+            <Settings className="w-4 h-4 text-[var(--theme-nav-text-muted)] group-hover:text-[var(--theme-primary)] transition-colors" />
+            <span className="text-white sidebar-nav-label transition-colors">Settings</span>
+          </button>
 
-        {/* Insights */}
-        <button
-          type="button"
-          onClick={() => onSelectPage('insights')}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left ${
-            currentPage === 'insights'
-              ? 'bg-[var(--active-nav-bg)] text-[var(--accent)] border border-[var(--active-nav-border)] shadow-xs font-semibold'
-              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] border border-transparent'
-          }`}
-        >
-          <BarChart3
-            className={`w-4 h-4 shrink-0 ${
-              currentPage === 'insights' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'
-            }`}
-          />
-          <span className="truncate">Insights</span>
-        </button>
-      </div>
-
-      {/* Bottom Navigation Links: Settings & Help & Support (as in reference concept) */}
-      <div className="p-3 border-t border-[var(--border-subtle)] shrink-0 space-y-1">
-        <button
-          type="button"
-          className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer text-left"
-          onClick={() => onSelectPage('dashboard')}
-        >
-          <Settings className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-          <span>Settings</span>
-        </button>
-
-        <button
-          type="button"
-          className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer text-left"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        >
-          <HelpCircle className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-          <span>Help & Support</span>
-        </button>
-      </div>
-    </aside>
+          <button
+            type="button"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium hover:bg-[var(--theme-nav-hover)] transition-colors cursor-pointer text-left group"
+            style={{ color: 'var(--theme-nav-text-muted, var(--text-secondary))' }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            <HelpCircle className="w-4 h-4 text-[var(--theme-nav-text-muted)] group-hover:text-[var(--theme-primary)] transition-colors" />
+            <span className="text-white sidebar-nav-label transition-colors">Help & Support</span>
+          </button>
+        </div>
+      </aside>
+    </>
   );
 };

@@ -12,61 +12,26 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-
-interface DifficultyRingData {
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  percent: number;
-  solved: number;
-  total: number;
-  color: string;
-  glowColor: string;
-  icon: React.ElementType;
-}
+import { Problem } from '../../types';
+import { useProgressRingsData, DifficultyRingStats } from '../../hooks/useProgressRingsData';
 
 interface ProgressRingsProps {
   onOpenDetail?: () => void;
+  problems?: Problem[];
 }
 
-export const ProgressRings: React.FC<ProgressRingsProps> = ({ onOpenDetail }) => {
+export const ProgressRings: React.FC<ProgressRingsProps> = ({
+  onOpenDetail,
+  problems,
+}) => {
   const { currentTheme } = useTheme();
-  const accent = currentTheme.tokens.accent;
-  const accentGlow = currentTheme.tokens.accentGlow;
-  const [filter, setFilter] = useState<string>('All Categories');
-  const [selectedRing, setSelectedRing] = useState<'Easy' | 'Medium' | 'Hard' | null>(null);
+  const accent = currentTheme.tokens.accent || '#F59E0B';
+  const accentGlow = currentTheme.tokens.accentGlow || 'rgba(245, 158, 11, 0.4)';
 
-  // FIXED SEMANTIC COLOURS across all 10 themes:
-  // Easy: Green (#10B981)
-  // Medium: Yellow/Amber (#F59E0B)
-  // Hard: Red (#F43F5E)
-  const ringData: DifficultyRingData[] = [
-    {
-      difficulty: 'Easy',
-      percent: 78,
-      solved: 320,
-      total: 410,
-      color: '#10B981',
-      glowColor: 'rgba(16, 185, 129, 0.4)',
-      icon: Box,
-    },
-    {
-      difficulty: 'Medium',
-      percent: 46,
-      solved: 180,
-      total: 390,
-      color: '#F59E0B',
-      glowColor: 'rgba(245, 158, 11, 0.4)',
-      icon: Layers,
-    },
-    {
-      difficulty: 'Hard',
-      percent: 22,
-      solved: 80,
-      total: 360,
-      color: '#F43F5E',
-      glowColor: 'rgba(244, 63, 94, 0.4)',
-      icon: Triangle,
-    },
-  ];
+  const [categoryFilter, setCategoryFilter] = useState<string>('All Categories');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<'Easy' | 'Medium' | 'Hard' | null>(null);
+
+  const { rings, overall, categoriesList } = useProgressRingsData(problems, categoryFilter);
 
   // SVG parameters for rings
   const size = 150;
@@ -74,9 +39,16 @@ export const ProgressRings: React.FC<ProgressRingsProps> = ({ onOpenDetail }) =>
   const radius = (size - strokeWidth * 2) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  const totalSolved = ringData.reduce((acc, r) => acc + r.solved, 0);
-  const totalQuestions = ringData.reduce((acc, r) => acc + r.total, 0);
-  const overallPercent = Math.round((totalSolved / totalQuestions) * 100);
+  const getDifficultyIcon = (diff: 'Easy' | 'Medium' | 'Hard') => {
+    switch (diff) {
+      case 'Easy':
+        return Box;
+      case 'Medium':
+        return Layers;
+      case 'Hard':
+        return Triangle;
+    }
+  };
 
   return (
     <div
@@ -104,18 +76,20 @@ export const ProgressRings: React.FC<ProgressRingsProps> = ({ onOpenDetail }) =>
           </div>
         </div>
 
-        {/* Category Filter & Full View Action */}
+        {/* Dynamic Category Filter & Full View Action */}
         <div className="flex items-center gap-2">
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="appearance-none bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded-xl pl-3 pr-8 py-1.5 focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="appearance-none bg-[var(--bg-surface-elevated)] text-xs text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded-xl pl-3 pr-8 py-1.5 focus:outline-none focus:border-[var(--accent)] cursor-pointer max-w-[170px] truncate"
             >
-              <option>All Categories</option>
-              <option>Data Structures</option>
-              <option>Algorithms</option>
-              <option>System Design</option>
+              <option value="All Categories">All Categories</option>
+              {categoriesList.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -135,20 +109,21 @@ export const ProgressRings: React.FC<ProgressRingsProps> = ({ onOpenDetail }) =>
         </div>
       </div>
 
-      {/* 3 Circular Rings Row — Fixed semantic colors: Green, Amber, Red */}
+      {/* 3 Circular Rings Row — Dynamic live values with semantic colors */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 py-4 justify-items-center">
-        {ringData.map((item) => {
-          const Icon = item.icon;
+        {rings.map((item) => {
+          const Icon = getDifficultyIcon(item.difficulty);
           const strokeDashoffset =
             circumference - (item.percent / 100) * circumference;
-          const isSelected = selectedRing === item.difficulty;
+          const isSelected = selectedDifficulty === item.difficulty;
 
           return (
             <div
               key={item.difficulty}
-              onClick={() =>
-                setSelectedRing(selectedRing === item.difficulty ? null : item.difficulty)
-              }
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedDifficulty(selectedDifficulty === item.difficulty ? null : item.difficulty);
+              }}
               className={`flex flex-col items-center cursor-pointer p-2 rounded-2xl transition-all duration-200 group ${
                 isSelected
                   ? 'bg-[var(--bg-surface-elevated)] ring-1 ring-white/30'
@@ -162,7 +137,7 @@ export const ProgressRings: React.FC<ProgressRingsProps> = ({ onOpenDetail }) =>
                 >
                   <defs>
                     <filter
-                      id={`glow-fixed-${item.difficulty}`}
+                      id={`glow-progress-${item.difficulty}`}
                       x="-20%"
                       y="-20%"
                       width="140%"
@@ -194,7 +169,7 @@ export const ProgressRings: React.FC<ProgressRingsProps> = ({ onOpenDetail }) =>
                     strokeDasharray={circumference}
                     strokeDashoffset={strokeDashoffset}
                     strokeLinecap="round"
-                    filter={`url(#glow-fixed-${item.difficulty})`}
+                    filter={`url(#glow-progress-${item.difficulty})`}
                     className="transition-all duration-700 ease-out"
                   />
                 </svg>
@@ -221,9 +196,9 @@ export const ProgressRings: React.FC<ProgressRingsProps> = ({ onOpenDetail }) =>
         })}
       </div>
 
-      {/* Bottom Summary Bar (4 metric tiles) with fixed semantic colors */}
+      {/* Bottom Summary Bar (4 dynamic metric tiles) */}
       <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        {/* Total Solved */}
+        {/* Card 1: Total Solved */}
         <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--bg-surface-elevated)]/50">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition-colors"
@@ -238,27 +213,27 @@ export const ProgressRings: React.FC<ProgressRingsProps> = ({ onOpenDetail }) =>
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-1">
               <div className="font-extrabold text-[var(--text-primary)] font-mono text-sm tabular-nums">
-                {totalSolved}
+                {overall.totalSolved}
               </div>
               <div
                 className="text-[10px] font-semibold font-mono flex items-center gap-0.5"
                 style={{ color: accent }}
               >
-                <ArrowUp className="w-2.5 h-2.5" /> 18%
+                <ArrowUp className="w-2.5 h-2.5" /> {overall.overallCompletion}%
               </div>
             </div>
             <div className="text-[10px] text-[var(--text-muted)] flex items-center justify-between">
               <span>Total Solved</span>
               <span className="font-mono text-[9px] font-bold" style={{ color: accent }}>
-                {overallPercent}%
+                {overall.totalSolved} / {overall.totalQuestions}
               </span>
             </div>
-            {/* Total Solved progress indicator on the Insights overview */}
+            {/* Completion progress bar */}
             <div className="mt-1.5 w-full h-1 bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
-                  width: `${overallPercent}%`,
+                  width: `${overall.overallCompletion}%`,
                   backgroundColor: accent,
                   boxShadow: `0 0 6px ${accentGlow}`,
                 }}
@@ -267,48 +242,62 @@ export const ProgressRings: React.FC<ProgressRingsProps> = ({ onOpenDetail }) =>
           </div>
         </div>
 
-        {/* Total Questions */}
+        {/* Card 2: Total Questions Available */}
         <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--bg-surface-elevated)]/50">
           <div className="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center text-cyan-400 shrink-0">
             <BarChart2 className="w-4 h-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="font-extrabold text-[var(--text-primary)] font-mono text-sm tabular-nums">
-              1,160
+              {overall.totalQuestions.toLocaleString()}
             </div>
-            <div className="text-[10px] text-[var(--text-muted)]">Total Questions</div>
-            <div className="text-[10px] text-[var(--text-secondary)]">Available</div>
+            <div className="text-[10px] text-[var(--text-muted)] truncate">Total Questions</div>
+            <div className="text-[9px] text-[var(--text-secondary)] font-mono truncate">
+              {overall.easyTotal}E • {overall.mediumTotal}M • {overall.hardTotal}H
+            </div>
           </div>
         </div>
 
-        {/* Day Streak */}
+        {/* Card 3: Day Streak */}
         <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--bg-surface-elevated)]/50">
           <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center text-amber-400 shrink-0">
             <Flame className="w-4 h-4 fill-amber-400 stroke-amber-400" />
           </div>
           <div>
             <div className="font-extrabold text-[var(--text-primary)] font-mono text-sm tabular-nums">
-              12
+              {overall.dayStreak > 0 ? overall.dayStreak : '0'}
             </div>
             <div className="text-[10px] text-[var(--text-muted)]">Day Streak</div>
             <div className="text-[10px] font-semibold text-emerald-400 font-mono flex items-center gap-0.5">
-              <ArrowUp className="w-2.5 h-2.5" /> 3
+              {overall.dayStreak > 0 ? (
+                <>
+                  <ArrowUp className="w-2.5 h-2.5" /> Active
+                </>
+              ) : (
+                <span className="text-slate-400 font-normal">Start today</span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Overall Accuracy */}
+        {/* Card 4: Overall Accuracy */}
         <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--bg-surface-elevated)]/50">
           <div className="w-8 h-8 rounded-lg bg-yellow-500/15 flex items-center justify-center text-yellow-400 shrink-0">
             <Trophy className="w-4 h-4" />
           </div>
           <div>
             <div className="font-extrabold text-[var(--text-primary)] font-mono text-sm tabular-nums">
-              63%
+              {overall.overallAccuracy !== null ? `${overall.overallAccuracy}%` : '—'}
             </div>
             <div className="text-[10px] text-[var(--text-muted)]">Overall Accuracy</div>
             <div className="text-[10px] font-semibold text-emerald-400 font-mono flex items-center gap-0.5">
-              <ArrowUp className="w-2.5 h-2.5" /> 7%
+              {overall.overallAccuracy !== null ? (
+                <>
+                  <ArrowUp className="w-2.5 h-2.5" /> Calibrated
+                </>
+              ) : (
+                <span className="text-slate-400 font-normal">No attempts</span>
+              )}
             </div>
           </div>
         </div>

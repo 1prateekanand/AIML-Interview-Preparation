@@ -356,7 +356,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
             <FileText className="w-5 h-5 text-[var(--accent)]" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+            <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)] tracking-tight">
               Architecture Solution Evaluation
             </h2>
             {/* Dynamically populated subtitle: Question #X • Category */}
@@ -369,7 +369,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="text-[var(--text-muted)] hover:text-white p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer shrink-0"
           title="Close evaluation"
         >
           <X className="w-5 h-5" />
@@ -383,7 +383,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
             <span className="text-xs font-bold text-[var(--accent)] uppercase tracking-wider">
               QUESTION:
             </span>
-            <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+            <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] tracking-tight">
               {problem.title}
             </h3>
           </div>
@@ -417,12 +417,12 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
             <>
               <span>•</span>
               <span>Difficulty:</span>
-              <span className="text-slate-200 font-semibold">{problem.difficulty}</span>
+              <span className="text-[var(--text-secondary)] font-semibold">{problem.difficulty}</span>
             </>
           )}
         </div>
 
-        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed pt-0.5">
+        <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed pt-0.5">
           {problem.description ||
             `Analyze the architecture requirements, trade-offs, and failure recovery modes for ${problem.title}.`}
         </p>
@@ -435,7 +435,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
               <span className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
                 REQUIREMENTS & CONSTRAINTS:
               </span>
-              <ul className="list-disc list-inside space-y-1.5 text-xs text-slate-300 pl-1 leading-relaxed">
+              <ul className="list-disc list-inside space-y-1.5 text-xs text-[var(--text-secondary)] pl-1 leading-relaxed">
                 {requirements.map((req, idx) => (
                   <li key={idx}>{req}</li>
                 ))}
@@ -464,7 +464,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
 
       {/* 4. SUBMITTED ARTIFACTS SECTION */}
       <div className="space-y-3">
-        <h3 className="text-xs sm:text-sm font-semibold text-slate-200 tracking-tight">
+        <h3 className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] tracking-tight">
           Submitted Artifacts
         </h3>
 
@@ -472,7 +472,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
           {/* Left Card: Whiteboard Diagram */}
           <div className="bg-[var(--bg-main)]/80 border border-[var(--border-subtle)] rounded-2xl p-4 space-y-2.5 flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-2 font-medium text-slate-200">
+              <span className="flex items-center gap-2 font-medium text-[var(--text-primary)]">
                 <ImageIcon className="w-4 h-4 text-[var(--accent)]" />
                 <span>Whiteboard Diagram</span>
               </span>
@@ -494,7 +494,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
                 <div className="w-9 h-9 rounded-lg border border-dashed border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)]">
                   <ImageIcon className="w-5 h-5 opacity-60" />
                 </div>
-                <span className="font-medium text-slate-300">No whiteboard diagram submitted.</span>
+                <span className="font-medium text-[var(--text-secondary)]">No whiteboard diagram submitted.</span>
                 <span className="text-[11px] text-[var(--text-muted)]">
                   Diagram is optional when written analysis is provided.
                 </span>
@@ -505,7 +505,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
           {/* Right Card: Written Explanation */}
           <div className="bg-[var(--bg-main)]/80 border border-[var(--border-subtle)] rounded-2xl p-4 space-y-2.5 flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-2 font-medium text-slate-200">
+              <span className="flex items-center gap-2 font-medium text-[var(--text-primary)]">
                 <FileText className="w-4 h-4 text-[var(--accent)]" />
                 <span>Written Explanation</span>
               </span>
@@ -514,7 +514,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
               </span>
             </div>
 
-            <div className="h-44 overflow-y-auto text-xs text-slate-200 p-3.5 bg-[var(--bg-surface)]/70 rounded-xl font-mono whitespace-pre-wrap leading-relaxed border border-[var(--border-subtle)]">
+            <div className="h-44 overflow-y-auto text-xs text-[var(--text-primary)] p-3.5 bg-[var(--bg-surface)]/70 rounded-xl font-mono whitespace-pre-wrap leading-relaxed border border-[var(--border-subtle)]">
               {hasText ? answerText.trim() : (
                 <span className="text-[var(--text-muted)] italic">No written explanation submitted.</span>
               )}
@@ -554,7 +554,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
             </svg>
 
             <div className="absolute flex flex-col items-center justify-center text-center">
-              <span className="text-2xl font-extrabold text-white font-mono leading-none">
+              <span className="text-2xl font-extrabold text-[var(--text-primary)] font-mono leading-none">
                 {evaluation.score}
               </span>
               <span className="text-[11px] text-[var(--text-muted)] font-medium">/10</span>
@@ -570,7 +570,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
             <span>{evaluation.status}</span>
           </div>
 
-          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed pt-1">
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed pt-1">
             {evaluation.overallFeedback}
           </p>
         </div>
@@ -579,17 +579,17 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
       {/* 6. MISSED CONCEPTS CARD */}
       <div className="bg-[var(--bg-main)]/80 border border-[var(--border-subtle)] rounded-2xl p-5 sm:p-6 space-y-3.5 shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-center text-slate-300">
+          <div className="w-5 h-5 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)]">
             <List className="w-3.5 h-3.5" />
           </div>
-          <span className="text-xs font-bold text-white tracking-wider uppercase">
+          <span className="text-xs font-bold text-[var(--text-primary)] tracking-wider uppercase">
             MISSED
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 pt-1">
           {evaluation.missedConcepts.map((concept, idx) => (
-            <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-300">
+            <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-[var(--text-secondary)]">
               <XCircle className="w-4 h-4 text-[var(--accent)] shrink-0 mt-0.5" />
               <span className="leading-snug">{concept}</span>
             </div>
@@ -606,7 +606,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
         >
           <div className="flex items-center gap-2.5">
             <Lightbulb className="w-4 h-4 text-[var(--accent)]" />
-            <span className="text-sm font-semibold text-white">Model Answer</span>
+            <span className="text-sm font-semibold text-[var(--text-primary)]">Model Answer</span>
           </div>
           <div className="text-[var(--text-muted)]">
             {modelAnswerOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -619,10 +619,10 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
               <div className="text-xs font-semibold text-[var(--accent)] uppercase tracking-wider">
                 KEY INSIGHT
               </div>
-              <p className="text-xs sm:text-sm text-white leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-[var(--text-primary)] leading-relaxed font-medium">
                 {evaluation.keyInsight}
               </p>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed pt-2 border-t border-[var(--border-subtle)]">
+              <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed pt-2 border-t border-[var(--border-subtle)]">
                 {evaluation.modelAnswer}
               </p>
             </div>
@@ -635,7 +635,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <HelpCircle className="w-4 h-4 text-[var(--accent)]" />
-            <span className="text-sm font-semibold text-white">Ask a doubt</span>
+            <span className="text-sm font-semibold text-[var(--text-primary)]">Ask a doubt</span>
           </div>
 
           {/* Dynamic Suggested Question Chips matching reference image */}
@@ -663,7 +663,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
               if (e.key === 'Enter') handleSendDoubt(doubtInput);
             }}
             placeholder="Ask anything about this question..."
-            className="flex-1 bg-transparent text-xs text-white placeholder:text-[var(--text-muted)] outline-none px-3 py-1"
+            className="flex-1 bg-transparent text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none px-3 py-1"
           />
           <button
             type="button"
@@ -693,7 +693,7 @@ export const EvaluationModal: React.FC<EvaluationModalProps> = ({
                   className={`max-w-[85%] rounded-2xl p-3 leading-relaxed ${
                     m.sender === 'user'
                       ? 'bg-[var(--accent)] text-[var(--bg-main)] font-medium rounded-tr-none'
-                      : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-slate-200 rounded-tl-none'
+                      : 'bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-tl-none'
                   }`}
                 >
                   <p>{m.text}</p>
